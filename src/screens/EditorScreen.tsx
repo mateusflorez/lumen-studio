@@ -2,8 +2,11 @@ import type { EditableContentFile, ContentItem, SaveState } from "../types";
 import { saveStateClassName, saveStateLabel, statusGlyph, statusLabel } from "../utils";
 import { LoadingState, ErrorState } from "../components/FeedbackStates";
 import { MarkdownEditor } from "../components/MarkdownEditor";
+import { MarpPreview } from "../components/MarpPreview";
+import { ActivityPreview } from "../components/ActivityPreview";
 
 export function EditorScreen({
+  workspacePath,
   editorDocument,
   selectedContentItem,
   editorContent,
@@ -11,12 +14,13 @@ export function EditorScreen({
   editorError,
   saveState,
   lastSavedAtMs,
-  showTechnicalBlocks,
+  showMarpPreview,
   externallyModified,
   onChange,
   onGoBack,
-  onToggleTechnicalBlocks,
+  onToggleMarpPreview,
 }: {
+  workspacePath: string;
   editorDocument: EditableContentFile | null;
   selectedContentItem: ContentItem | null;
   editorContent: string;
@@ -24,12 +28,17 @@ export function EditorScreen({
   editorError: string | null;
   saveState: SaveState;
   lastSavedAtMs: number | null;
-  showTechnicalBlocks: boolean;
+  showMarpPreview: boolean;
   externallyModified: boolean;
   onChange: (content: string) => void;
   onGoBack: () => void;
-  onToggleTechnicalBlocks: () => void;
+  onToggleMarpPreview: () => void;
 }) {
+  const isLesson = Boolean(selectedContentItem?.relativePath.startsWith("aulas/"));
+  const isActivity = Boolean(selectedContentItem?.relativePath.startsWith("atividades/"));
+  const canPreview = isLesson || isActivity;
+  const previewVisible = showMarpPreview && canPreview;
+
   return (
     <section className="editor-screen" aria-labelledby="editor-title">
       <div className="editor-screen-header">
@@ -53,13 +62,15 @@ export function EditorScreen({
             {selectedContentItem ? (
               <span className="status-chip">{selectedContentItem.file}</span>
             ) : null}
-            <button
-              type="button"
-              className="ghost-action"
-              onClick={onToggleTechnicalBlocks}
-            >
-              {showTechnicalBlocks ? "ocultar blocos tecnicos" : "mostrar blocos tecnicos"}
-            </button>
+            {canPreview ? (
+              <button
+                type="button"
+                className={`ghost-action${previewVisible ? " ghost-action--active" : ""}`}
+                onClick={onToggleMarpPreview}
+              >
+                {previewVisible ? "ocultar preview" : "mostrar preview"}
+              </button>
+            ) : null}
           </div>
           <div className="subject-detail-flags">
             <span className={`status-chip ${saveStateClassName(saveState)}`}>
@@ -83,16 +94,26 @@ export function EditorScreen({
       {editorError ? <ErrorState message={editorError} /> : null}
       {editorLoading ? <LoadingState /> : null}
       {!editorLoading && !editorError && editorDocument ? (
-        <section className="editor-panel" aria-label="Editor Markdown">
-          <div className="editor-surface">
-            <MarkdownEditor
-              key={`${editorDocument.relativePath}-${showTechnicalBlocks ? "show" : "hide"}`}
-              value={editorContent}
-              onChange={onChange}
-              showTechnicalBlocks={showTechnicalBlocks}
-            />
-          </div>
-        </section>
+        <div className={`editor-body${previewVisible ? " editor-body--split" : ""}`}>
+          <section className="editor-panel" aria-label="Editor Markdown">
+            <div className="editor-surface">
+              <MarkdownEditor
+                key={editorDocument.relativePath}
+                value={editorContent}
+                onChange={onChange}
+              />
+            </div>
+          </section>
+          {previewVisible ? (
+            <div className="marp-preview-container">
+              {isLesson ? (
+                <MarpPreview workspacePath={workspacePath} content={editorContent} />
+              ) : (
+                <ActivityPreview workspacePath={workspacePath} content={editorContent} />
+              )}
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );

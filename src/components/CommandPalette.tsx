@@ -61,27 +61,31 @@ export function buildCommandActions({
   viewingDetail,
   viewingEditor,
   hasWorkspace,
-  showTechnicalBlocks,
+  showMarpPreview,
+  canPreviewCurrentFile,
   canReloadCurrentFile,
   onChooseWorkspace,
+  onOpenSettings,
   onCreateSubject,
   onCreateTemplateSubject,
   onGoHome,
   onGoToFiles,
-  onToggleTechnicalBlocks,
+  onToggleMarpPreview,
   onReloadCurrentFile,
 }: {
   viewingDetail: boolean;
   viewingEditor: boolean;
   hasWorkspace: boolean;
-  showTechnicalBlocks: boolean;
+  showMarpPreview: boolean;
+  canPreviewCurrentFile: boolean;
   canReloadCurrentFile: boolean;
   onChooseWorkspace: () => Promise<void>;
+  onOpenSettings: () => void;
   onCreateSubject: () => void;
   onCreateTemplateSubject: () => void;
   onGoHome: () => void;
   onGoToFiles: () => void;
-  onToggleTechnicalBlocks: () => void;
+  onToggleMarpPreview: () => void;
   onReloadCurrentFile: () => void;
 }): CommandAction[] {
   const actions: CommandAction[] = [];
@@ -108,6 +112,13 @@ export function buildCommandActions({
       keywords: "nova disciplina modelo criar gerar exemplo",
       run: onCreateTemplateSubject,
     });
+    actions.push({
+      id: "open-settings",
+      label: "Abrir configuracoes",
+      hint: "Sistema",
+      keywords: "configuracoes visual logo background assets",
+      run: onOpenSettings,
+    });
   }
 
   if (viewingDetail) {
@@ -128,12 +139,15 @@ export function buildCommandActions({
       keywords: "arquivos disciplina voltar lista",
       run: onGoToFiles,
     });
+  }
+
+  if (viewingEditor && canPreviewCurrentFile) {
     actions.push({
-      id: "toggle-technical-blocks",
-      label: showTechnicalBlocks ? "Ocultar blocos tecnicos" : "Mostrar blocos tecnicos",
+      id: "toggle-marp-preview",
+      label: showMarpPreview ? "Ocultar preview" : "Mostrar preview",
       hint: "Editor",
-      keywords: "blocos tecnicos css frontmatter anotacoes marp mostrar ocultar",
-      run: onToggleTechnicalBlocks,
+      keywords: "preview slides marp atividade a4 visualizar renderizar mostrar ocultar",
+      run: onToggleMarpPreview,
     });
   }
 

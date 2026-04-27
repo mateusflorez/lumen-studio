@@ -15,6 +15,7 @@ import type {
   CreateContentItemResult,
   SaveState,
   DeleteTarget,
+  AssetSettingsState,
 } from "./types";
 import { describeError } from "./utils";
 import { HomeIcon, BookIcon, ClipboardIcon, SettingsIcon } from "./components/icons";
@@ -25,10 +26,12 @@ import { DeleteModal } from "./components/modals/DeleteModal";
 import { HomeScreen } from "./screens/HomeScreen";
 import { SubjectDetailScreen } from "./screens/SubjectDetailScreen";
 import { EditorScreen } from "./screens/EditorScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 
 const workspaceStorageKey = "lumen-studio.workspace-path";
 
 function App() {
+  const [activeSection, setActiveSection] = useState<"home" | "settings">("home");
   const [workspacePath, setWorkspacePath] = useState(
     () => window.localStorage.getItem(workspaceStorageKey) ?? "",
   );
@@ -48,7 +51,7 @@ function App() {
   const [editorError, setEditorError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastSavedAtMs, setLastSavedAtMs] = useState<number | null>(null);
-  const [showTechnicalBlocks, setShowTechnicalBlocks] = useState(false);
+  const [showMarpPreview, setShowMarpPreview] = useState(false);
   const [externallyModified, setExternallyModified] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -59,6 +62,10 @@ function App() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [processingOutputPath, setProcessingOutputPath] = useState<string | null>(null);
+  const [assetSettings, setAssetSettings] = useState<AssetSettingsState | null>(null);
+  const [assetSettingsLoading, setAssetSettingsLoading] = useState(false);
+  const [assetSettingsError, setAssetSettingsError] = useState<string | null>(null);
+  const [assetSettingsBusy, setAssetSettingsBusy] = useState(false);
 
   const editorContentRef = useRef("");
   const saveRequestRef = useRef(0);
@@ -66,6 +73,10 @@ function App() {
   const hasWorkspace = workspacePath.trim().length > 0;
   const viewingDetail = Boolean(selectedSubjectSlug);
   const viewingEditor = Boolean(selectedContentPath);
+  const showingSettings = activeSection === "settings";
+  const canPreviewCurrentFile =
+    Boolean(selectedContentPath?.startsWith("aulas/")) ||
+    Boolean(selectedContentPath?.startsWith("atividades/"));
   const totalLessons = subjects.reduce((sum, s) => sum + s.lessonCount, 0);
   const totalActivities = subjects.reduce((sum, s) => sum + s.activityCount, 0);
   const selectedContentItem = selectedSubject
@@ -124,6 +135,21 @@ function App() {
       setError(describeError(cause, "Falha ao ler disciplinas."));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function refreshAssetSettings() {
+    setAssetSettingsLoading(true);
+
+    try {
+      const nextSettings = await invoke<AssetSettingsState>("get_asset_settings");
+      setAssetSettings(nextSettings);
+      setAssetSettingsError(null);
+    } catch (cause) {
+      setAssetSettings(null);
+      setAssetSettingsError(describeError(cause, "Falha ao ler as configuracoes visuais."));
+    } finally {
+      setAssetSettingsLoading(false);
     }
   }
 
@@ -214,6 +240,10 @@ function App() {
   }, [workspacePath]);
 
   useEffect(() => {
+    void refreshAssetSettings();
+  }, []);
+
+  useEffect(() => {
     if (!workspacePath || !selectedSubjectSlug) {
       setSelectedSubject(null);
       setSelectedContentPath(null);
@@ -282,6 +312,7 @@ function App() {
       if (typeof selection !== "string" || !selection.trim()) return;
 
       window.localStorage.setItem(workspaceStorageKey, selection);
+      setActiveSection("home");
       setWorkspacePath(selection);
       setSelectedSubjectSlug(null);
       setSelectedSubject(null);
@@ -293,6 +324,67 @@ function App() {
       setExternallyModified(false);
     } finally {
       setChangingWorkspace(false);
+    }
+  }
+
+  async function handleSelectAsset(kind: "logo" | "background") {
+    setAssetSettingsBusy(true);
+
+    try {
+      const selection = await open({
+        multiple: false,
+        directory: false,
+        title: kind === "logo" ? "Selecionar logo do sistema" : "Selecionar background do sistema",
+        filters: [{
+          name: "Imagens",
+          extensions: ["png", "jpg", "jpeg", "webp", "svg"],
+        }],
+      });
+
+      if (typeof selection !== "string" || !selection.trim()) return;
+
+      const nextSettings = await invoke<AssetSettingsState>("set_asset_file", {
+        assetKind: kind,
+        sourcePath: selection,
+      });
+      setAssetSettings(nextSettings);
+      setAssetSettingsError(null);
+    } catch (cause) {
+      setAssetSettingsError(describeError(cause, "Falha ao salvar o arquivo selecionado."));
+    } finally {
+      setAssetSettingsBusy(false);
+    }
+  }
+
+  async function handleClearAsset(kind: "logo" | "background") {
+    setAssetSettingsBusy(true);
+
+    try {
+      const nextSettings = await invoke<AssetSettingsState>("clear_asset_file", {
+        assetKind: kind,
+      });
+      setAssetSettings(nextSettings);
+      setAssetSettingsError(null);
+    } catch (cause) {
+      setAssetSettingsError(describeError(cause, "Falha ao limpar o arquivo selecionado."));
+    } finally {
+      setAssetSettingsBusy(false);
+    }
+  }
+
+  async function handleSelectTheme(themeId: string) {
+    setAssetSettingsBusy(true);
+
+    try {
+      const nextSettings = await invoke<AssetSettingsState>("set_color_theme", {
+        themeId,
+      });
+      setAssetSettings(nextSettings);
+      setAssetSettingsError(null);
+    } catch (cause) {
+      setAssetSettingsError(describeError(cause, "Falha ao atualizar a cor do sistema."));
+    } finally {
+      setAssetSettingsBusy(false);
     }
   }
 
@@ -464,10 +556,18 @@ function App() {
     viewingDetail,
     viewingEditor,
     hasWorkspace,
-    showTechnicalBlocks,
+    showMarpPreview,
+    canPreviewCurrentFile,
     canReloadCurrentFile: Boolean(selectedContentPath),
     onChooseWorkspace: handleChooseWorkspace,
+    onOpenSettings: () => {
+      setSelectedContentPath(null);
+      setSelectedSubjectSlug(null);
+      setActiveSection("settings");
+      setCommandPaletteOpen(false);
+    },
     onGoHome: () => {
+      setActiveSection("home");
       setSelectedSubjectSlug(null);
       setSelectedContentPath(null);
       setCommandPaletteOpen(false);
@@ -476,8 +576,8 @@ function App() {
       setSelectedContentPath(null);
       setCommandPaletteOpen(false);
     },
-    onToggleTechnicalBlocks: () => {
-      setShowTechnicalBlocks((current) => !current);
+    onToggleMarpPreview: () => {
+      setShowMarpPreview((current) => !current);
       setCommandPaletteOpen(false);
     },
     onCreateSubject: () => {
@@ -506,7 +606,12 @@ function App() {
     <main className="studio-shell">
       <aside className="studio-sidebar" aria-label="Navegacao principal">
         <nav className="sidebar-icons">
-          <button type="button" className="sidebar-icon is-active" aria-label="Disciplinas">
+          <button
+            type="button"
+            className={`sidebar-icon${!showingSettings ? " is-active" : ""}`}
+            aria-label="Disciplinas"
+            onClick={() => setActiveSection("home")}
+          >
             <HomeIcon />
           </button>
           <button type="button" className="sidebar-icon" aria-label="Aulas">
@@ -515,7 +620,16 @@ function App() {
           <button type="button" className="sidebar-icon" aria-label="Atividades">
             <ClipboardIcon />
           </button>
-          <button type="button" className="sidebar-icon" aria-label="Configuracoes">
+          <button
+            type="button"
+            className={`sidebar-icon${showingSettings ? " is-active" : ""}`}
+            aria-label="Configuracoes"
+            onClick={() => {
+              setSelectedContentPath(null);
+              setSelectedSubjectSlug(null);
+              setActiveSection("settings");
+            }}
+          >
             <SettingsIcon />
           </button>
         </nav>
@@ -531,7 +645,19 @@ function App() {
           </div>
         </header>
 
-        {!viewingDetail ? (
+        {showingSettings ? (
+          <SettingsScreen
+            assetSettings={assetSettings}
+            loading={assetSettingsLoading}
+            error={assetSettingsError}
+            busy={assetSettingsBusy}
+            onSelectLogo={() => void handleSelectAsset("logo")}
+            onSelectBackground={() => void handleSelectAsset("background")}
+            onClearLogo={() => void handleClearAsset("logo")}
+            onClearBackground={() => void handleClearAsset("background")}
+            onSelectTheme={(themeId) => void handleSelectTheme(themeId)}
+          />
+        ) : !viewingDetail ? (
           <HomeScreen
             workspacePath={workspacePath}
             changingWorkspace={changingWorkspace}
@@ -544,6 +670,7 @@ function App() {
             creatingTemplateSubject={creatingTemplateSubject}
             onChooseWorkspace={handleChooseWorkspace}
             onSelectSubject={(slug) => {
+              setActiveSection("home");
               setSelectedSubjectSlug(slug);
               setSelectedContentPath(null);
               setEditorDocument(null);
@@ -559,6 +686,7 @@ function App() {
           />
         ) : viewingEditor ? (
           <EditorScreen
+            workspacePath={workspacePath}
             editorDocument={editorDocument}
             selectedContentItem={selectedContentItem}
             editorContent={editorContent}
@@ -566,11 +694,11 @@ function App() {
             editorError={editorError}
             saveState={saveState}
             lastSavedAtMs={lastSavedAtMs}
-            showTechnicalBlocks={showTechnicalBlocks}
+            showMarpPreview={showMarpPreview}
             externallyModified={externallyModified}
             onChange={setEditorContent}
             onGoBack={() => setSelectedContentPath(null)}
-            onToggleTechnicalBlocks={() => setShowTechnicalBlocks((current) => !current)}
+            onToggleMarpPreview={() => setShowMarpPreview((current) => !current)}
           />
         ) : (
           <SubjectDetailScreen
@@ -611,6 +739,7 @@ function App() {
                 name,
                 color,
               });
+              setActiveSection("home");
               await refreshSubjects(workspacePath);
               setSelectedSubjectSlug(result.slug);
               setSelectedContentPath(null);
@@ -638,6 +767,7 @@ function App() {
                 subjectSlug: selectedSubjectSlug,
                 theme,
               });
+              setActiveSection("home");
               await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
               setSelectedContentPath(result.relativePath);
               setCreateLessonOpen(false);
@@ -660,6 +790,7 @@ function App() {
                 subjectSlug: selectedSubjectSlug,
                 theme,
               });
+              setActiveSection("home");
               await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
               setSelectedContentPath(result.relativePath);
               setCreateActivityOpen(false);

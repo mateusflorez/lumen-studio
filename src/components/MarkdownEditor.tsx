@@ -1,8 +1,9 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { codeFolding, foldEffect } from "@codemirror/language";
-import { EditorState, Text } from "@codemirror/state";
+import { EditorState, RangeSetBuilder, StateField, Text } from "@codemirror/state";
 import {
+  Decoration,
+  DecorationSet,
   drawSelection,
   EditorView,
   highlightActiveLine,
@@ -51,31 +52,59 @@ const editorTheme = EditorView.theme({
   ".cm-cursor": {
     borderLeftColor: "var(--accent)",
   },
-  ".cm-foldPlaceholder": {
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: "999px",
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    color: "var(--text-secondary)",
-    padding: "0.1rem 0.5rem",
-    fontFamily: "var(--font-ui)",
+});
+
+const hiddenTechnicalBlock = Decoration.replace({ block: true });
+
+const technicalBlocksField = StateField.define<DecorationSet>({
+  create(state) {
+    return buildTechnicalDecorations(state.doc);
   },
+  update(_value, transaction) {
+    return transaction.docChanged
+      ? buildTechnicalDecorations(transaction.state.doc)
+      : buildTechnicalDecorations(transaction.state.doc);
+  },
+  provide: (field) => [
+    EditorView.decorations.from(field),
+    EditorView.atomicRanges.of((view) => view.state.field(field)),
+  ],
+});
+
+const protectTechnicalBlocks = EditorState.transactionFilter.of((transaction) => {
+  if (!transaction.docChanged) {
+    return transaction;
+  }
+
+  const ranges = findTechnicalBlockRanges(transaction.startState.doc);
+  let blocked = false;
+
+  transaction.changes.iterChangedRanges((fromA, toA) => {
+    if (ranges.some((range) => changeTouchesRange(fromA, toA, range))) {
+      blocked = true;
+    }
+  });
+
+  return blocked ? [] : transaction;
 });
 
 export function MarkdownEditor({
   value,
   onChange,
-  showTechnicalBlocks,
 }: {
   value: string;
   onChange: (nextValue: string) => void;
-  showTechnicalBlocks: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const onChangeEvent = useEffectEvent(onChange);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
-    if (!hostRef.current) {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (!hostRef.current || viewRef.current) {
       return;
     }
 
@@ -87,24 +116,14 @@ export function MarkdownEditor({
         drawSelection(),
         highlightActiveLine(),
         markdown(),
-        codeFolding({
-          placeholderDOM: (_view, onclick, prepared) => {
-            const placeholder = document.createElement("button");
-            placeholder.type = "button";
-            placeholder.className = "cm-foldPlaceholder";
-            placeholder.textContent =
-              typeof prepared === "string" ? prepared : "bloco tecnico oculto";
-            placeholder.onclick = onclick;
-            return placeholder;
-          },
-          preparePlaceholder: (state, range) => technicalBlockLabel(state.doc, range.from),
-        }),
+        technicalBlocksField,
+        protectTechnicalBlocks,
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         oneDark,
         editorTheme,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
-            onChangeEvent(update.state.doc.toString());
+            onChangeRef.current(update.state.doc.toString());
           }
         }),
       ],
@@ -112,15 +131,12 @@ export function MarkdownEditor({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
-    if (!showTechnicalBlocks) {
-      foldTechnicalBlocks(view);
-    }
 
     return () => {
       view.destroy();
       viewRef.current = null;
     };
-  }, [onChangeEvent, showTechnicalBlocks, value]);
+  }, []);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -136,20 +152,19 @@ export function MarkdownEditor({
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: value },
     });
-    if (!showTechnicalBlocks) {
-      foldTechnicalBlocks(view);
-    }
-  }, [showTechnicalBlocks, value]);
+  }, [value]);
 
   return <div ref={hostRef} className="markdown-editor" />;
 }
 
-function foldTechnicalBlocks(view: EditorView) {
-  const effects = findTechnicalBlockRanges(view.state.doc).map((range) => foldEffect.of(range));
+function buildTechnicalDecorations(doc: Text) {
+  const builder = new RangeSetBuilder<Decoration>();
 
-  if (effects.length > 0) {
-    view.dispatch({ effects });
+  for (const range of findTechnicalBlockRanges(doc)) {
+    builder.add(range.from, range.to, hiddenTechnicalBlock);
   }
+
+  return builder.finish();
 }
 
 function findTechnicalBlockRanges(doc: Text) {
@@ -165,8 +180,7 @@ function findTechnicalBlockRanges(doc: Text) {
     if (closingLine) {
       ranges.push({
         from: doc.line(1).from,
-        to: closingLine.to,
-        label: "configuracao do slide",
+        to: lineEnd(doc, closingLine.number),
       });
       lineNumber = closingLine.number + 1;
     }
@@ -184,8 +198,7 @@ function findTechnicalBlockRanges(doc: Text) {
       if (closingLine) {
         ranges.push({
           from: line.from,
-          to: closingLine.to,
-          label: "css do tema",
+          to: lineEnd(doc, closingLine.number),
         });
         lineNumber = closingLine.number + 1;
         continue;
@@ -200,31 +213,26 @@ function findTechnicalBlockRanges(doc: Text) {
       if (closingLine) {
         ranges.push({
           from: line.from,
-          to: closingLine.to,
-          label: commentBlockLabel(line.text),
+          to: lineEnd(doc, closingLine.number),
         });
         lineNumber = closingLine.number + 1;
         continue;
       }
     }
 
+    if (isTechnicalAssetLine(trimmed)) {
+      ranges.push({
+        from: line.from,
+        to: lineEnd(doc, lineNumber),
+      });
+      lineNumber += 1;
+      continue;
+    }
+
     lineNumber += 1;
   }
 
   return ranges.filter((range) => range.from < range.to);
-}
-
-function technicalBlockLabel(doc: Text, from: number) {
-  return findTechnicalBlockRanges(doc).find((range) => range.from === from)?.label ?? null;
-}
-
-function commentBlockLabel(text: string) {
-  const normalized = text.toLowerCase();
-  if (normalized.includes("_class:") || normalized.includes("_paginate:") || normalized.includes("_footer:")) {
-    return "configuracao do slide";
-  }
-
-  return "anotacoes do apresentador";
 }
 
 function findClosingLine(
@@ -242,8 +250,30 @@ function findClosingLine(
   return null;
 }
 
+function lineEnd(doc: Text, lineNumber: number) {
+  const line = doc.line(lineNumber);
+  return line.number < doc.lines ? doc.line(line.number + 1).from : line.to;
+}
+
+function isTechnicalAssetLine(trimmed: string) {
+  return (
+    trimmed.startsWith("![") &&
+    (trimmed.includes("senai_logo") ||
+      trimmed.includes("/assets/logo") ||
+      trimmed.includes("\\assets\\logo") ||
+      trimmed.includes("../shared/"))
+  );
+}
+
+function changeTouchesRange(from: number, to: number, range: TechnicalBlockRange) {
+  if (from === to) {
+    return from >= range.from && from <= range.to;
+  }
+
+  return from < range.to && to > range.from;
+}
+
 type TechnicalBlockRange = {
   from: number;
   to: number;
-  label: string;
 };

@@ -712,6 +712,100 @@
   padding: 1.1rem;
 }
 
+.settings-grid {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.settings-asset-card {
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    var(--bg-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.settings-asset-card h3 {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+}
+
+.settings-asset-copy {
+  max-width: 34rem;
+  margin-top: 0.9rem;
+  text-align: left;
+}
+
+.settings-asset-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.settings-theme-card {
+  grid-column: 1 / -1;
+}
+
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.settings-theme-option {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.settings-theme-option:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+
+.settings-theme-option.is-active {
+  border-color: rgba(255, 185, 56, 0.35);
+  background: rgba(255, 185, 56, 0.08);
+}
+
+.settings-theme-swatches {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.settings-theme-swatches span {
+  width: 100%;
+  height: 2.4rem;
+  border-radius: 0.75rem;
+}
+
+.settings-theme-label {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
 .editor-panel {
   margin-top: 1rem;
   padding: 1.2rem;
@@ -765,6 +859,101 @@
 
 .editor-empty {
   margin-top: 1rem;
+}
+
+.editor-body {
+  margin-top: 1rem;
+}
+
+.editor-body > .editor-panel {
+  margin-top: 0;
+}
+
+.editor-body--split {
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+}
+
+.editor-body--split > .editor-panel {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.marp-preview-container {
+  flex: 0 0 46%;
+  min-width: 0;
+}
+
+.marp-preview {
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    var(--bg-surface);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.marp-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.2rem 0.6rem;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.marp-preview-frame {
+  width: 100%;
+  height: 62vh;
+  min-height: 420px;
+  border: 0;
+  background: #fff;
+  display: block;
+}
+
+.marp-preview-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  padding: 2rem;
+  font-family: var(--font-content);
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.marp-preview-body--error {
+  color: var(--danger);
+}
+
+.activity-preview-stage {
+  padding: 1.2rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.02);
+  display: flex;
+  justify-content: center;
+}
+
+.activity-preview-frame {
+  width: min(100%, 794px);
+  aspect-ratio: 210 / 297;
+  min-height: 62vh;
+  border: 0;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  display: block;
+}
+
+.ghost-action--active {
+  border-color: rgba(255, 185, 56, 0.3);
+  color: var(--accent);
+  background: rgba(255, 185, 56, 0.08);
 }
 
 .back-action {
@@ -1030,7 +1219,8 @@
   .section-heading,
   .subject-detail-header,
   .subject-detail-grid,
-  .editor-screen-header {
+  .editor-screen-header,
+  .settings-grid {
     grid-template-columns: 1fr;
     display: grid;
   }

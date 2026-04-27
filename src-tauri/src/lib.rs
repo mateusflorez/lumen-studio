@@ -6,6 +6,7 @@ use std::{
     process::Command,
     time::SystemTime,
 };
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
 #[derive(Debug, Deserialize)]
 struct SubjectConfig {
@@ -90,6 +91,67 @@ struct CreateSubjectResult {
 struct CreateContentItemResult {
     relative_path: String,
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AssetSettingsState {
+    app_data_dir: String,
+    fallback_dir: Option<String>,
+    logo_path: Option<String>,
+    logo_source: String,
+    background_path: Option<String>,
+    background_source: String,
+    color_theme_id: String,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AssetSettingsFile {
+    logo_file_name: Option<String>,
+    background_file_name: Option<String>,
+    color_theme_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedAssetSettings {
+    logo_path: Option<PathBuf>,
+    logo_source: &'static str,
+    background_path: Option<PathBuf>,
+    background_source: &'static str,
+    app_data_dir: PathBuf,
+    fallback_dir: Option<PathBuf>,
+    color_theme: &'static ColorThemePreset,
+}
+
+#[derive(Debug)]
+struct ColorThemePreset {
+    id: &'static str,
+    name: &'static str,
+    title_dark: &'static str,
+    title_mid: &'static str,
+    line: &'static str,
+    activity_title: &'static str,
+    activity_subtitle: &'static str,
+    activity_rule: &'static str,
+    activity_label: &'static str,
+    activity_box_border: &'static str,
+    activity_box_bg: &'static str,
+    activity_table_bg: &'static str,
+    activity_tip_bg: &'static str,
+}
+
+const COLOR_THEME_PRESETS: [ColorThemePreset; 10] = [
+    ColorThemePreset { id: "azul", name: "Azul", title_dark: "#1a5fa8", title_mid: "#3a7fc1", line: "#3a7fc1", activity_title: "#1f5fb8", activity_subtitle: "#334155", activity_rule: "#2f6fcb", activity_label: "#2f6fcb", activity_box_border: "#d4deed", activity_box_bg: "#f6f9ff", activity_table_bg: "#f3f7fd", activity_tip_bg: "#eaf2ff" },
+    ColorThemePreset { id: "preto", name: "Preto", title_dark: "#111111", title_mid: "#4a4a4a", line: "#1f2937", activity_title: "#111111", activity_subtitle: "#374151", activity_rule: "#1f2937", activity_label: "#111111", activity_box_border: "#d1d5db", activity_box_bg: "#f8fafc", activity_table_bg: "#f3f4f6", activity_tip_bg: "#f3f4f6" },
+    ColorThemePreset { id: "vermelho", name: "Vermelho", title_dark: "#b42318", title_mid: "#e11d48", line: "#ef4444", activity_title: "#b42318", activity_subtitle: "#4b5563", activity_rule: "#ef4444", activity_label: "#b42318", activity_box_border: "#fecdd3", activity_box_bg: "#fff1f2", activity_table_bg: "#fff1f2", activity_tip_bg: "#ffe4e6" },
+    ColorThemePreset { id: "verde", name: "Verde", title_dark: "#166534", title_mid: "#16a34a", line: "#22c55e", activity_title: "#166534", activity_subtitle: "#3f3f46", activity_rule: "#22c55e", activity_label: "#166534", activity_box_border: "#bbf7d0", activity_box_bg: "#f0fdf4", activity_table_bg: "#f0fdf4", activity_tip_bg: "#dcfce7" },
+    ColorThemePreset { id: "roxo", name: "Roxo", title_dark: "#6d28d9", title_mid: "#8b5cf6", line: "#a78bfa", activity_title: "#6d28d9", activity_subtitle: "#475569", activity_rule: "#8b5cf6", activity_label: "#6d28d9", activity_box_border: "#ddd6fe", activity_box_bg: "#f5f3ff", activity_table_bg: "#f5f3ff", activity_tip_bg: "#ede9fe" },
+    ColorThemePreset { id: "laranja", name: "Laranja", title_dark: "#c2410c", title_mid: "#f97316", line: "#fb923c", activity_title: "#c2410c", activity_subtitle: "#44403c", activity_rule: "#f97316", activity_label: "#c2410c", activity_box_border: "#fed7aa", activity_box_bg: "#fff7ed", activity_table_bg: "#fff7ed", activity_tip_bg: "#ffedd5" },
+    ColorThemePreset { id: "bege", name: "Bege", title_dark: "#92400e", title_mid: "#b45309", line: "#d97706", activity_title: "#92400e", activity_subtitle: "#57534e", activity_rule: "#d97706", activity_label: "#92400e", activity_box_border: "#e7d7bf", activity_box_bg: "#faf6ee", activity_table_bg: "#faf6ee", activity_tip_bg: "#f5ead7" },
+    ColorThemePreset { id: "teal", name: "Teal", title_dark: "#0f766e", title_mid: "#14b8a6", line: "#2dd4bf", activity_title: "#0f766e", activity_subtitle: "#334155", activity_rule: "#14b8a6", activity_label: "#0f766e", activity_box_border: "#99f6e4", activity_box_bg: "#f0fdfa", activity_table_bg: "#f0fdfa", activity_tip_bg: "#ccfbf1" },
+    ColorThemePreset { id: "rosa", name: "Rosa", title_dark: "#be185d", title_mid: "#ec4899", line: "#f472b6", activity_title: "#be185d", activity_subtitle: "#475569", activity_rule: "#ec4899", activity_label: "#be185d", activity_box_border: "#fbcfe8", activity_box_bg: "#fdf2f8", activity_table_bg: "#fdf2f8", activity_tip_bg: "#fce7f3" },
+    ColorThemePreset { id: "cinza", name: "Cinza", title_dark: "#334155", title_mid: "#64748b", line: "#94a3b8", activity_title: "#334155", activity_subtitle: "#475569", activity_rule: "#64748b", activity_label: "#334155", activity_box_border: "#cbd5e1", activity_box_bg: "#f8fafc", activity_table_bg: "#f8fafc", activity_tip_bg: "#eef2f7" },
+];
 
 #[tauri::command]
 fn list_subjects(workspace_path: String) -> Result<Vec<SubjectSummary>, String> {
@@ -267,7 +329,7 @@ fn generate_content_output(
         .ok_or_else(|| "Nome de arquivo invalido.".to_string())?;
 
     if relative_path.starts_with("aulas/") {
-        generate_lesson_output(&tool_root, &subject_path, &content_path, file_name)?;
+        generate_lesson_output(&tool_root, &content_path, file_name)?;
         return Ok(());
     }
 
@@ -825,7 +887,6 @@ fn resolve_generation_tool_root(workspace_root: &Path) -> Result<PathBuf, String
 
 fn generate_lesson_output(
     root: &Path,
-    subject_path: &Path,
     content_path: &Path,
     file_name: &str,
 ) -> Result<(), String> {
@@ -834,15 +895,33 @@ fn generate_lesson_output(
         return Err("Marp CLI nao encontrado em node_modules/.bin/marp.cmd.".to_string());
     }
 
+    let subject_path = content_path
+        .parent()
+        .and_then(|path| path.parent())
+        .ok_or_else(|| "Nao foi possivel localizar a disciplina da aula.".to_string())?;
     let output_dir = subject_path.join("slides");
     fs::create_dir_all(&output_dir)
         .map_err(|error| format!("Nao foi possivel criar a pasta de slides: {}", error))?;
 
     let output_file = output_dir.join(format!("{}.pptx", file_stem(file_name)));
+    let content = fs::read_to_string(content_path)
+        .map_err(|error| format!("Nao foi possivel ler a aula para gerar o slide: {}", error))?;
+    let resolved_assets = resolve_asset_settings()?;
+    let prepared_content = prepare_lesson_markdown_for_render(&content, &resolved_assets)?;
+    let temp_input = std::env::temp_dir().join(format!(
+        "lumen_generate_{}_{}.md",
+        file_stem(file_name),
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    ));
+    fs::write(&temp_input, prepared_content)
+        .map_err(|error| format!("Nao foi possivel preparar a aula para exportacao: {}", error))?;
 
     let marp_bin_string = marp_bin.to_string_lossy().to_string();
     let output_file_string = output_file.to_string_lossy().to_string();
-    let content_path_string = content_path.to_string_lossy().to_string();
+    let content_path_string = temp_input.to_string_lossy().to_string();
 
     let status = Command::new("cmd")
         .args([
@@ -856,6 +935,8 @@ fn generate_lesson_output(
         ])
         .status()
         .map_err(|error| format!("Nao foi possivel executar o Marp CLI: {}", error))?;
+
+    let _ = fs::remove_file(&temp_input);
 
     if !status.success() || !output_file.is_file() {
         return Err("Falha ao gerar o slide. Verifique se o Marp CLI esta instalado corretamente.".to_string());
@@ -884,6 +965,13 @@ fn generate_activity_output(
     let output_file = output_dir.join(format!("{}.pdf", file_stem(file_name)));
     let temp_html = output_dir.join(format!("._tmp_{}.html", file_stem(file_name)));
     let title = file_stem(file_name);
+    let resolved_assets = resolve_asset_settings()?;
+    let logo_path = resolved_assets
+        .logo_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let theme_id = resolved_assets.color_theme.id.to_string();
     let markdown_it_string = markdown_it_module.to_string_lossy().to_string();
     let content_path_string = content_path.to_string_lossy().to_string();
     let temp_html_string = temp_html.to_string_lossy().to_string();
@@ -896,6 +984,8 @@ fn generate_activity_output(
         .arg(content_path_string.as_str())
         .arg(temp_html_string.as_str())
         .arg(title.as_str())
+        .arg(logo_path.as_str())
+        .arg(theme_id.as_str())
         .status()
         .map_err(|error| format!("Nao foi possivel preparar o HTML da atividade: {}", error))?;
 
@@ -935,6 +1025,194 @@ fn detect_browser_path() -> Option<PathBuf> {
         .iter()
         .map(PathBuf::from)
         .find(|path| path.is_file())
+}
+
+fn local_app_assets_dir() -> Result<PathBuf, String> {
+    let local_app_data = std::env::var_os("LOCALAPPDATA")
+        .ok_or_else(|| "Nao foi possivel localizar o AppData local deste usuario.".to_string())?;
+    Ok(PathBuf::from(local_app_data).join("lumen_studio").join("assets"))
+}
+
+fn program_files_assets_dir() -> Option<PathBuf> {
+    std::env::var_os("ProgramFiles")
+        .map(PathBuf::from)
+        .map(|path| path.join("lumen_studio").join("assets"))
+}
+
+fn asset_settings_file_path(app_data_dir: &Path) -> PathBuf {
+    app_data_dir.parent().unwrap_or(app_data_dir).join("settings.json")
+}
+
+fn read_asset_settings_file(app_data_dir: &Path) -> AssetSettingsFile {
+    let file_path = asset_settings_file_path(app_data_dir);
+    fs::read_to_string(file_path)
+        .ok()
+        .and_then(|content| serde_json::from_str::<AssetSettingsFile>(&content).ok())
+        .unwrap_or_default()
+}
+
+fn write_asset_settings_file(app_data_dir: &Path, settings: &AssetSettingsFile) -> Result<(), String> {
+    let parent_dir = app_data_dir.parent().unwrap_or(app_data_dir);
+    fs::create_dir_all(parent_dir)
+        .map_err(|error| format!("Nao foi possivel preparar a pasta de configuracoes: {}", error))?;
+    fs::write(
+        asset_settings_file_path(app_data_dir),
+        serde_json::to_string_pretty(settings)
+            .map_err(|error| format!("Nao foi possivel serializar as configuracoes: {}", error))?,
+    )
+    .map_err(|error| format!("Nao foi possivel salvar as configuracoes de assets: {}", error))
+}
+
+fn resolve_asset_settings() -> Result<ResolvedAssetSettings, String> {
+    let app_data_dir = local_app_assets_dir()?;
+    let fallback_dir = program_files_assets_dir();
+    let stored = read_asset_settings_file(&app_data_dir);
+    let color_theme = resolve_color_theme(
+        stored
+            .color_theme_id
+            .as_deref()
+            .unwrap_or("azul"),
+    );
+
+    let app_logo = stored
+        .logo_file_name
+        .as_ref()
+        .map(|file_name| app_data_dir.join(file_name))
+        .filter(|path| path.is_file())
+        .or_else(|| find_default_asset(&app_data_dir, "logo"));
+    let app_background = stored
+        .background_file_name
+        .as_ref()
+        .map(|file_name| app_data_dir.join(file_name))
+        .filter(|path| path.is_file())
+        .or_else(|| find_default_asset(&app_data_dir, "background"));
+
+    let fallback_logo = fallback_dir
+        .as_ref()
+        .and_then(|dir| find_default_asset(dir, "logo"));
+    let fallback_background = fallback_dir
+        .as_ref()
+        .and_then(|dir| find_default_asset(dir, "background"));
+
+    let (logo_path, logo_source) = if let Some(path) = app_logo {
+        (Some(path), "appData")
+    } else if let Some(path) = fallback_logo {
+        (Some(path), "fallback")
+    } else {
+        (None, "none")
+    };
+
+    let (background_path, background_source) = if let Some(path) = app_background {
+        (Some(path), "appData")
+    } else if let Some(path) = fallback_background {
+        (Some(path), "fallback")
+    } else {
+        (None, "none")
+    };
+
+    Ok(ResolvedAssetSettings {
+        logo_path,
+        logo_source,
+        background_path,
+        background_source,
+        app_data_dir,
+        fallback_dir,
+        color_theme,
+    })
+}
+
+fn resolve_color_theme(theme_id: &str) -> &'static ColorThemePreset {
+    COLOR_THEME_PRESETS
+        .iter()
+        .find(|preset| preset.id == theme_id)
+        .unwrap_or(&COLOR_THEME_PRESETS[0])
+}
+
+fn find_default_asset(dir: &Path, stem: &str) -> Option<PathBuf> {
+    ["png", "jpg", "jpeg", "webp", "svg"]
+        .iter()
+        .map(|ext| dir.join(format!("{}.{}", stem, ext)))
+        .find(|path| path.is_file())
+}
+
+fn prepare_lesson_markdown_for_render(
+    content: &str,
+    assets: &ResolvedAssetSettings,
+) -> Result<String, String> {
+    let logo_url = asset_data_url(assets.logo_path.as_deref())?;
+    let background_url = asset_data_url(assets.background_path.as_deref())?;
+    let theme = assets.color_theme;
+
+    let mut lines = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.starts_with("backgroundImage:") {
+            if let Some(url) = &background_url {
+                lines.push(format!("backgroundImage: url('{}')", url));
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("backgroundSize:") {
+            if background_url.is_some() {
+                lines.push("backgroundSize: cover".to_string());
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("footer:") {
+            if let Some(url) = &logo_url {
+                lines.push(format!("footer: '<img src=\"{}\" alt=\"logo\" />'", url));
+            } else {
+                lines.push("footer: ''".to_string());
+            }
+            continue;
+        }
+
+        if trimmed.contains("shared/senai_logo") {
+            if let Some(url) = &logo_url {
+                let width = if trimmed.contains("w:300px") {
+                    "300"
+                } else if trimmed.contains("w:180px") {
+                    "180"
+                } else {
+                    "300"
+                };
+                lines.push(format!("<img src=\"{}\" alt=\"logo\" width=\"{}\" />", url, width));
+            }
+            continue;
+        }
+
+        let next_line = line
+            .replace("../shared/background.jpg", background_url.as_deref().unwrap_or(""))
+            .replace("../../shared/background.jpg", background_url.as_deref().unwrap_or(""))
+            .replace("../shared/senai_logo.png", logo_url.as_deref().unwrap_or(""))
+            .replace("../../shared/senai_logo.png", logo_url.as_deref().unwrap_or(""))
+            .replace("#1a5fa8", theme.title_dark)
+            .replace("#3a7fc1", theme.title_mid)
+            .replace("#1f5fb8", theme.title_dark)
+            .replace("#2f6fcb", theme.line);
+        lines.push(next_line);
+    }
+
+    Ok(lines.join("\n"))
+}
+
+fn asset_data_url(path: Option<&Path>) -> Result<Option<String>, String> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let bytes = fs::read(path)
+        .map_err(|error| format!("Nao foi possivel ler o asset {}: {}", path.display(), error))?;
+    let mime = match path.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        _ => "application/octet-stream",
+    };
+    Ok(Some(format!("data:{};base64,{}", mime, BASE64.encode(bytes))))
 }
 
 fn next_available_subject_slug(root: &Path, base: &str) -> String {
@@ -987,12 +1265,12 @@ fn template_plan() -> &'static str {
 }
 
 fn template_lesson() -> &'static str {
-    "---\nmarp: true\ntheme: default\npaginate: true\ntitle: Aula 01 - Visao geral do Lumen Studio\n---\n\n<style>\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n}\nsection.capa h1 {\n  color: #1f4f99;\n  margin-bottom: 0;\n}\nsection.capa h2 {\n  color: #4b77b8;\n  margin-top: 0.25rem;\n}\n.table-compact table {\n  font-size: 0.72em;\n}\n.highlight {\n  color: #c2410c;\n  font-weight: 700;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n\n# Disciplina Modelo\n## Aula 01 — Visao geral do Lumen Studio\n\nExemplo de aula com recursos variados\n\n---\n\n## Objetivos da aula\n\n- Conhecer a estrutura de uma disciplina\n- Visualizar exemplos de escrita para slides\n- Usar imagens, tabelas e anotacoes do apresentador\n\n---\n\n## Topicos do encontro\n\n- Estrutura da pasta da disciplina\n- Diferenca entre aula e atividade\n- Recursos visuais no Markdown\n- Fluxo de edicao e revisao\n\n<!--\nAbrir a aula explicando que este arquivo foi pensado para mostrar o maximo de possibilidades com o minimo de friccao para o professor.\nCada topico pode virar uma aula real depois.\n-->\n\n---\n\n## Estrutura basica da disciplina\n\n| Pasta ou arquivo | Funcao |\n|---|---|\n| `contexto.md` | descreve a disciplina |\n| `plano_geral.md` | organiza a sequencia de conteudo |\n| `aulas/` | guarda os slides Marp |\n| `atividades/` | guarda as atividades |\n| `referencias/` | notas e apoio |\n\n---\n\n## Exemplo de imagem no slide\n\n![h:260](../assets/exemplo_fluxo.svg)\n\n<!--\nUsar este slide para mostrar que o professor pode incorporar diagramas simples no proprio material da disciplina.\n-->\n\n---\n\n## Exemplo de interface ou wireframe\n\n![h:250](../assets/exemplo_interface.svg)\n\n---\n\n<!-- _class: table-compact -->\n## Comparando tipos de conteudo\n\n| Tipo | Melhor uso | Saida comum |\n|---|---|---|\n| Aula | explicar, demonstrar, apresentar | slide |\n| Atividade | praticar, revisar, avaliar | PDF |\n| Referencia | apoiar o preparo do docente | Markdown interno |\n\n---\n\n## Destaques para a escrita\n\n- Use titulos curtos e objetivos\n- Prefira um ponto principal por slide\n- Marque trechos importantes com destaque como <span class=\"highlight\">conceito-chave</span>\n- Deixe anotacoes para voce em comentarios HTML\n\n<!--\nReforcar que o aluno ve o slide renderizado, mas o docente pode manter seu roteiro dentro do proprio arquivo.\n-->\n\n---\n\n## Mini atividade em sala\n\n1. Abra o arquivo da atividade modelo\n2. Identifique os blocos de marcacao, tabela e imagem\n3. Edite uma pergunta com sua propria linguagem\n4. Salve e volte para comparar o resultado\n\n---\n\n## Fechamento\n\n- Esta disciplina foi criada para servir como base inicial\n- Voce pode duplicar a estrutura e adaptar para sua materia\n- O proximo passo natural e substituir os exemplos pelo seu conteudo real\n"
+    "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula 01 - Visao geral do Lumen Studio\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}\nfooter img {\n  height: 50px;\n  width: auto;\n}\n\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}\nsection.capa h1 {\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}\nsection.capa h2 {\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}\nsection.capa p {\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}\n\nsection:not(.capa) h2 {\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}\n\nsection:not(.capa) strong {\n  color: #1a5fa8;\n}\n\nsection.compacto table {\n  font-size: 0.72em;\n  width: 60%;\n}\n\nsection.compacto p {\n  font-size: 0.85em;\n  margin-bottom: 6px;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Disciplina Modelo\n## Aula 01 — Visao geral do Lumen Studio\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Conhecer a estrutura de uma disciplina\n- Visualizar exemplos de escrita para slides\n- Usar imagens, tabelas e anotacoes do apresentador\n\n---\n\n## Topicos do encontro\n\n- Estrutura da pasta da disciplina\n- Diferenca entre aula e atividade\n- Recursos visuais no Markdown\n- Fluxo de edicao e revisao\n\n<!--\nAbrir a aula explicando que este arquivo foi pensado para mostrar o maximo de possibilidades com o minimo de friccao para o professor.\nCada topico pode virar uma aula real depois.\n-->\n\n---\n\n## Estrutura basica da disciplina\n\n| Pasta ou arquivo | Funcao |\n|---|---|\n| `contexto.md` | descreve a disciplina |\n| `plano_geral.md` | organiza a sequencia de conteudo |\n| `aulas/` | guarda os slides Marp |\n| `atividades/` | guarda as atividades |\n| `referencias/` | notas e apoio |\n\n---\n\n## Exemplo de imagem no slide\n\n![h:260](../assets/exemplo_fluxo.svg)\n\n<!--\nUsar este slide para mostrar que o professor pode incorporar diagramas simples no proprio material da disciplina.\n-->\n\n---\n\n## Exemplo de interface ou wireframe\n\n![h:250](../assets/exemplo_interface.svg)\n\n---\n\n<!-- _class: compacto -->\n## Comparando tipos de conteudo\n\n| Tipo | Melhor uso | Saida comum |\n|---|---|---|\n| Aula | explicar, demonstrar, apresentar | slide |\n| Atividade | praticar, revisar, avaliar | PDF |\n| Referencia | apoiar o preparo do docente | Markdown interno |\n\n---\n\n## Destaques para a escrita\n\n- Use titulos curtos e objetivos\n- Prefira um ponto principal por slide\n- Marque trechos importantes com destaque como **conceito-chave**\n- Deixe anotacoes para voce em comentarios HTML\n\n<!--\nReforcar que o aluno ve o slide renderizado, mas o docente pode manter seu roteiro dentro do proprio arquivo.\n-->\n\n---\n\n## Mini atividade em sala\n\n1. Abra o arquivo da atividade modelo\n2. Identifique os blocos de marcacao, tabela e imagem\n3. Edite uma pergunta com sua propria linguagem\n4. Salve e volte para comparar o resultado\n\n---\n\n## Fechamento\n\n- Esta disciplina foi criada para servir como base inicial\n- Voce pode duplicar a estrutura e adaptar para sua materia\n- O proximo passo natural e substituir os exemplos pelo seu conteudo real\n"
 }
 
 fn template_lesson_draft(number: usize, theme: &str) -> String {
     format!(
-        "---\nmarp: true\ntheme: default\npaginate: true\ntitle: Aula {0:02} - {1}\n---\n\n# Aula {0:02} - {1}\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nRoteiro do apresentador.\nEscreva aqui as orientacoes que nao devem aparecer no slide.\n-->\n\n---\n\n## Exemplo ou demonstracao\n\n- Inserir exemplo pratico\n\n---\n\n## Atividade em sala\n\n- Inserir exercicio, desafio ou estudo de caso\n\n---\n\n## Fechamento\n\n- Retomar aprendizados\n- Indicar o proximo passo\n",
+        "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula {0:02} - {1}\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {{\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}}\nfooter img {{\n  height: 50px;\n  width: auto;\n}}\n\nsection.capa {{\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}}\nsection.capa h1 {{\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}}\nsection.capa h2 {{\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}}\nsection.capa p {{\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}}\n\nsection:not(.capa) h2 {{\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}}\n\nsection:not(.capa) strong {{\n  color: #1a5fa8;\n}}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula {0:02} — {1}\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Topico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Topico 2\n   Registre a linha de fala principal para manter a sequencia da apresentacao.\n\n3. Topico 3\n   Aponte exemplos, perguntas para a turma ou analogias uteis.\n-->\n\n---\n\n## Exemplo ou demonstracao\n\n- Inserir exemplo pratico\n\n---\n\n## Atividade\n\n- Inserir exercicio, desafio ou estudo de caso\n\n---\n\n## Fechamento\n\n- Retomar os principais aprendizados\n- Registrar proximo assunto\n",
         number,
         theme
     )
@@ -1025,7 +1303,7 @@ fn empty_plan_template(subject_name: &str) -> String {
 }
 
 fn template_lesson_model() -> &'static str {
-    "---\nmarp: true\ntheme: default\npaginate: true\ntitle: Aula XX - Titulo da aula\n---\n\n# Nome da disciplina\n## Aula XX — Titulo da aula\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nRoteiro do apresentador.\n-->\n"
+    "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula XX - Titulo da aula\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}\nfooter img {\n  height: 50px;\n  width: auto;\n}\n\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}\nsection.capa h1 {\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}\nsection.capa h2 {\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}\nsection.capa p {\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}\n\nsection:not(.capa) h2 {\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}\n\nsection:not(.capa) strong {\n  color: #1a5fa8;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula XX — Titulo da aula\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Topico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Topico 2\n   Registre a linha de fala principal para manter a sequencia da apresentacao.\n\n3. Topico 3\n   Aponte exemplos, perguntas para a turma ou analogias uteis.\n-->\n"
 }
 
 fn template_plan_model() -> &'static str {
@@ -1082,33 +1360,441 @@ const fs = require('fs');
 const MarkdownIt = require(process.argv[1]);
 const inputPath = process.argv[2];
 const outputPath = process.argv[3];
-const title = process.argv[4];
+const fallbackTitle = process.argv[4];
+const logoPath = process.argv[5];
+const themeId = process.argv[6];
 const md = new MarkdownIt({ html: true, breaks: true, linkify: true });
-const content = fs.readFileSync(inputPath, 'utf8');
+const rawContent = fs.readFileSync(inputPath, 'utf8');
+const themes = {
+  azul: { title: '#1f5fb8', subtitle: '#334155', rule: '#2f6fcb', label: '#2f6fcb', boxBorder: '#d4deed', boxBg: '#f6f9ff', tableBg: '#f3f7fd', tipBg: '#eaf2ff' },
+  preto: { title: '#111111', subtitle: '#374151', rule: '#1f2937', label: '#111111', boxBorder: '#d1d5db', boxBg: '#f8fafc', tableBg: '#f3f4f6', tipBg: '#f3f4f6' },
+  vermelho: { title: '#b42318', subtitle: '#4b5563', rule: '#ef4444', label: '#b42318', boxBorder: '#fecdd3', boxBg: '#fff1f2', tableBg: '#fff1f2', tipBg: '#ffe4e6' },
+  verde: { title: '#166534', subtitle: '#3f3f46', rule: '#22c55e', label: '#166534', boxBorder: '#bbf7d0', boxBg: '#f0fdf4', tableBg: '#f0fdf4', tipBg: '#dcfce7' },
+  roxo: { title: '#6d28d9', subtitle: '#475569', rule: '#8b5cf6', label: '#6d28d9', boxBorder: '#ddd6fe', boxBg: '#f5f3ff', tableBg: '#f5f3ff', tipBg: '#ede9fe' },
+  laranja: { title: '#c2410c', subtitle: '#44403c', rule: '#f97316', label: '#c2410c', boxBorder: '#fed7aa', boxBg: '#fff7ed', tableBg: '#fff7ed', tipBg: '#ffedd5' },
+  bege: { title: '#92400e', subtitle: '#57534e', rule: '#d97706', label: '#92400e', boxBorder: '#e7d7bf', boxBg: '#faf6ee', tableBg: '#faf6ee', tipBg: '#f5ead7' },
+  teal: { title: '#0f766e', subtitle: '#334155', rule: '#14b8a6', label: '#0f766e', boxBorder: '#99f6e4', boxBg: '#f0fdfa', tableBg: '#f0fdfa', tipBg: '#ccfbf1' },
+  rosa: { title: '#be185d', subtitle: '#475569', rule: '#ec4899', label: '#be185d', boxBorder: '#fbcfe8', boxBg: '#fdf2f8', tableBg: '#fdf2f8', tipBg: '#fce7f3' },
+  cinza: { title: '#334155', subtitle: '#475569', rule: '#64748b', label: '#334155', boxBorder: '#cbd5e1', boxBg: '#f8fafc', tableBg: '#f8fafc', tipBg: '#eef2f7' },
+};
+const theme = themes[themeId] || themes.azul;
+function toDataUrl(filePath) {
+  if (!filePath) return '';
+  const ext = String(filePath).split('.').pop().toLowerCase();
+  const mime =
+    ext === 'png' ? 'image/png' :
+    ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+    ext === 'webp' ? 'image/webp' :
+    ext === 'svg' ? 'image/svg+xml' :
+    'application/octet-stream';
+  const buffer = fs.readFileSync(filePath);
+  return `data:${mime};base64,${buffer.toString('base64')}`;
+}
+const logoSrc = toDataUrl(logoPath);
+
+function parseFrontmatter(source) {
+  if (!source.startsWith('---')) {
+    return { body: source, title: fallbackTitle, subtitle: '' };
+  }
+
+  const closingIndex = source.indexOf('\n---', 3);
+  if (closingIndex === -1) {
+    return { body: source, title: fallbackTitle, subtitle: '' };
+  }
+
+  const frontmatter = source.slice(3, closingIndex).trim();
+  const body = source.slice(closingIndex + 4).trimStart();
+  const meta = {};
+
+  for (const line of frontmatter.split('\n')) {
+    const separator = line.indexOf(':');
+    if (separator === -1) continue;
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '');
+    meta[key] = value;
+  }
+
+  return {
+    body,
+    title: meta.title || fallbackTitle,
+    subtitle: meta.subtitle || '',
+  };
+}
+
+const parsed = parseFrontmatter(rawContent);
+const renderedBody = md.render(parsed.body);
 const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>${title}</title>
+  <title>${parsed.title}</title>
   <style>
-    body { font-family: Georgia, serif; color: #0f172a; margin: 40px; line-height: 1.55; }
-    h1, h2, h3, h4 { color: #111827; }
-    h1 { font-size: 28px; margin-bottom: 8px; }
-    h2 { font-size: 20px; margin-top: 28px; }
-    p, li, td, th { font-size: 14px; }
-    table { width: 100%; border-collapse: collapse; margin: 18px 0; }
-    th, td { border: 1px solid #cbd5e1; padding: 10px; vertical-align: top; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #0f172a;
+      margin: 0;
+      line-height: 1.45;
+      background: #eef3f8;
+    }
+    .page {
+      max-width: 794px;
+      min-height: 1123px;
+      margin: 0 auto;
+      padding: 28px 30px 40px;
+      box-sizing: border-box;
+      background: #ffffff;
+    }
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .page-header img { max-height: 34px; width: auto; }
+    .hero-title {
+      margin: 0;
+      color: ${theme.title};
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+    .hero-subtitle {
+      margin: 4px 0 0;
+      color: ${theme.subtitle};
+      font-size: 11px;
+    }
+    .hero-rule {
+      margin: 10px 0 18px;
+      border: 0;
+      border-top: 3px solid ${theme.rule};
+    }
+    .student-box {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border: 1px solid ${theme.boxBorder};
+      border-radius: 8px;
+      background: ${theme.boxBg};
+    }
+    .student-label {
+      color: ${theme.label};
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .student-line {
+      display: block;
+      margin-top: 12px;
+      border-bottom: 1px solid #b8c8df;
+      height: 12px;
+    }
+    h1, h2, h3, h4 { color: ${theme.title}; }
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin: 0 0 18px;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 800;
+      margin: 16px 0 10px;
+    }
+    h3 {
+      font-size: 12px;
+      font-weight: 700;
+      margin: 10px 0 8px;
+    }
+    p, li, td, th {
+      font-size: 11px;
+      color: #111827;
+    }
+    ul, ol {
+      margin: 8px 0 10px 20px;
+      padding: 0;
+    }
+    li {
+      margin: 4px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
+    }
+    th, td {
+      border: 1px solid #d4deed;
+      padding: 7px 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      color: ${theme.title};
+      background: ${theme.tableBg};
+      font-weight: 700;
+    }
     img { max-width: 100%; height: auto; }
-    code { background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
-    pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow: auto; }
-    .fill-box { display: block; width: 100%; min-height: 120px; border: 1px solid #cbd5e1; border-radius: 12px; margin-top: 12px; }
-    .answer-line { display: block; border-bottom: 1px solid #94a3b8; height: 24px; margin-top: 12px; }
+    code {
+      background: #eef4fb;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    pre {
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+      overflow: auto;
+    }
+    .fill-box {
+      display: block;
+      width: 100%;
+      min-height: 96px;
+      border-left: 2px solid #c9d7eb;
+      margin-top: 8px;
+    }
+    .fill-box.small,
+    .small-box {
+      min-height: 42px;
+    }
+    .answer-line {
+      display: block;
+      border-bottom: 1px solid #94a3b8;
+      height: 20px;
+      margin-top: 8px;
+    }
+    .tip {
+      padding: 10px 12px;
+      border-left: 4px solid ${theme.rule};
+      background: ${theme.tipBg};
+      margin: 10px 0 14px;
+      font-size: 11px;
+      line-height: 1.55;
+    }
   </style>
 </head>
-<body>${md.render(content)}</body>
+<body>
+  <main class="page">
+    ${logoSrc ? `<div class="page-header"><img src="${logoSrc}" alt="Logo" /></div>` : ''}
+    <h1 class="hero-title">${parsed.title}</h1>
+    ${parsed.subtitle ? `<p class="hero-subtitle">${parsed.subtitle}</p>` : ''}
+    <hr class="hero-rule" />
+    <section class="student-box">
+      <span class="student-label">Aluno(a)</span>
+      <span class="student-line"></span>
+    </section>
+    ${renderedBody}
+  </main>
+</body>
 </html>`;
 fs.writeFileSync(outputPath, html, 'utf8');
 "#;
+
+#[tauri::command]
+fn render_marp_html(workspace_path: String, content: String) -> Result<String, String> {
+    let root = resolve_workspace_root(&workspace_path)?;
+    let tool_root = resolve_generation_tool_root(&root)
+        .map_err(|_| "Ferramentas de geracao nao encontradas. Instale as dependencias no workspace.".to_string())?;
+    let assets = resolve_asset_settings()?;
+
+    let marp_bin = tool_root.join("node_modules").join(".bin").join("marp.cmd");
+    if !marp_bin.is_file() {
+        return Err("Marp CLI nao encontrado em node_modules/.bin/marp.cmd.".to_string());
+    }
+
+    let temp_dir = std::env::temp_dir();
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+
+    let temp_input = temp_dir.join(format!("lumen_preview_{}.md", timestamp));
+    let temp_output = temp_dir.join(format!("lumen_preview_{}.html", timestamp));
+
+    let prepared_content = prepare_lesson_markdown_for_render(&content, &assets)?;
+    fs::write(&temp_input, &prepared_content)
+        .map_err(|e| format!("Falha ao criar arquivo temporario: {}", e))?;
+
+    let marp_bin_str = marp_bin.to_string_lossy().to_string();
+    let input_str = temp_input.to_string_lossy().to_string();
+    let output_str = temp_output.to_string_lossy().to_string();
+
+    let status = Command::new("cmd")
+        .args(["/C", &marp_bin_str, "--html", "--allow-local-files", "--output", &output_str, &input_str])
+        .status()
+        .map_err(|e| format!("Falha ao executar o Marp CLI: {}", e))?;
+
+    let _ = fs::remove_file(&temp_input);
+
+    if !status.success() || !temp_output.is_file() {
+        let _ = fs::remove_file(&temp_output);
+        return Err("Falha ao renderizar os slides. Verifique se o Marp CLI esta instalado corretamente.".to_string());
+    }
+
+    let html = fs::read_to_string(&temp_output)
+        .map_err(|e| format!("Falha ao ler o HTML gerado: {}", e))?;
+
+    let _ = fs::remove_file(&temp_output);
+
+    Ok(html)
+}
+
+#[tauri::command]
+fn render_activity_html(workspace_path: String, content: String) -> Result<String, String> {
+    let root = resolve_workspace_root(&workspace_path)?;
+    let tool_root = resolve_generation_tool_root(&root)
+        .map_err(|_| "Ferramentas de geracao nao encontradas. Instale as dependencias no workspace.".to_string())?;
+    let markdown_it_module = tool_root.join("node_modules").join("markdown-it");
+
+    if !markdown_it_module.exists() {
+        return Err("markdown-it nao encontrado em node_modules.".to_string());
+    }
+    let assets = resolve_asset_settings()?;
+    let logo_path = assets
+        .logo_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let theme_id = assets.color_theme.id.to_string();
+    let temp_dir = std::env::temp_dir();
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+
+    let temp_input = temp_dir.join(format!("lumen_activity_preview_{}.md", timestamp));
+    let temp_output = temp_dir.join(format!("lumen_activity_preview_{}.html", timestamp));
+
+    fs::write(&temp_input, &content)
+        .map_err(|e| format!("Falha ao criar arquivo temporario: {}", e))?;
+
+    let status = Command::new("node")
+        .arg("-e")
+        .arg(ACTIVITY_HTML_RENDER_SCRIPT)
+        .arg(markdown_it_module.to_string_lossy().to_string())
+        .arg(temp_input.to_string_lossy().to_string())
+        .arg(temp_output.to_string_lossy().to_string())
+        .arg("Preview da atividade")
+        .arg(logo_path)
+        .arg(theme_id)
+        .status()
+        .map_err(|e| format!("Falha ao renderizar a atividade: {}", e))?;
+
+    let _ = fs::remove_file(&temp_input);
+
+    if !status.success() || !temp_output.is_file() {
+        let _ = fs::remove_file(&temp_output);
+        return Err("Falha ao montar o preview da atividade.".to_string());
+    }
+
+    let html = fs::read_to_string(&temp_output)
+        .map_err(|e| format!("Falha ao ler o HTML gerado: {}", e))?;
+
+    let _ = fs::remove_file(&temp_output);
+
+    Ok(html)
+}
+
+#[tauri::command]
+fn get_asset_settings() -> Result<AssetSettingsState, String> {
+    let resolved = resolve_asset_settings()?;
+    Ok(AssetSettingsState {
+        app_data_dir: resolved.app_data_dir.to_string_lossy().to_string(),
+        fallback_dir: resolved
+            .fallback_dir
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string()),
+        logo_path: resolved
+            .logo_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string()),
+        logo_source: resolved.logo_source.to_string(),
+        background_path: resolved
+            .background_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string()),
+        background_source: resolved.background_source.to_string(),
+        color_theme_id: resolved.color_theme.id.to_string(),
+    })
+}
+
+#[tauri::command]
+fn set_color_theme(theme_id: String) -> Result<AssetSettingsState, String> {
+    let app_data_dir = local_app_assets_dir()?;
+    let normalized = theme_id.trim().to_lowercase();
+    if COLOR_THEME_PRESETS.iter().all(|preset| preset.id != normalized) {
+        return Err("Tema de cor invalido.".to_string());
+    }
+
+    let mut settings = read_asset_settings_file(&app_data_dir);
+    settings.color_theme_id = Some(normalized);
+    write_asset_settings_file(&app_data_dir, &settings)?;
+    get_asset_settings()
+}
+
+#[tauri::command]
+fn set_asset_file(asset_kind: String, source_path: String) -> Result<AssetSettingsState, String> {
+    let source = PathBuf::from(source_path.trim());
+    if !source.is_file() {
+        return Err("Selecione um arquivo valido.".to_string());
+    }
+
+    let app_data_dir = local_app_assets_dir()?;
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|error| format!("Nao foi possivel preparar a pasta de assets: {}", error))?;
+
+    let extension = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())
+        .filter(|value| ["png", "jpg", "jpeg", "webp", "svg"].contains(&value.as_str()))
+        .ok_or_else(|| "Use um arquivo de imagem compativel: png, jpg, jpeg, webp ou svg.".to_string())?;
+
+    let mut settings = read_asset_settings_file(&app_data_dir);
+    let target_file_name = match asset_kind.as_str() {
+        "logo" => format!("logo.{}", extension),
+        "background" => format!("background.{}", extension),
+        _ => return Err("Tipo de asset invalido.".to_string()),
+    };
+
+    if asset_kind == "logo" {
+        if let Some(previous) = settings.logo_file_name.take() {
+            let _ = fs::remove_file(app_data_dir.join(previous));
+        }
+        settings.logo_file_name = Some(target_file_name.clone());
+    } else {
+        if let Some(previous) = settings.background_file_name.take() {
+            let _ = fs::remove_file(app_data_dir.join(previous));
+        }
+        settings.background_file_name = Some(target_file_name.clone());
+    }
+
+    fs::copy(&source, app_data_dir.join(&target_file_name))
+        .map_err(|error| format!("Nao foi possivel copiar o arquivo selecionado: {}", error))?;
+    write_asset_settings_file(&app_data_dir, &settings)?;
+    get_asset_settings()
+}
+
+#[tauri::command]
+fn clear_asset_file(asset_kind: String) -> Result<AssetSettingsState, String> {
+    let app_data_dir = local_app_assets_dir()?;
+    let mut settings = read_asset_settings_file(&app_data_dir);
+
+    match asset_kind.as_str() {
+        "logo" => {
+            if let Some(previous) = settings.logo_file_name.take() {
+                let _ = fs::remove_file(app_data_dir.join(previous));
+            }
+        }
+        "background" => {
+            if let Some(previous) = settings.background_file_name.take() {
+                let _ = fs::remove_file(app_data_dir.join(previous));
+            }
+        }
+        _ => return Err("Tipo de asset invalido.".to_string()),
+    }
+
+    write_asset_settings_file(&app_data_dir, &settings)?;
+    get_asset_settings()
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1133,7 +1819,13 @@ pub fn run() {
             create_subject,
             create_template_subject,
             create_lesson,
-            create_activity
+            create_activity,
+            get_asset_settings,
+            set_asset_file,
+            clear_asset_file,
+            set_color_theme,
+            render_marp_html,
+            render_activity_html
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

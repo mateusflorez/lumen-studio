@@ -58,6 +58,16 @@ export type CreateContentItemResult = {
   relativePath: string;
 };
 
+export type AssetSettingsState = {
+  appDataDir: string;
+  fallbackDir: string | null;
+  logoPath: string | null;
+  logoSource: string;
+  backgroundPath: string | null;
+  backgroundSource: string;
+  colorThemeId: string;
+};
+
 export type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 export type DeleteTarget =
