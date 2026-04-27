@@ -47,6 +47,11 @@ type SaveContentResult = {
   updatedAtMs: number | null;
 };
 
+type ContentFileSnapshot = {
+  content: string;
+  updatedAtMs: number | null;
+};
+
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 const workspaceStorageKey = "senai-studio.workspace-path";
@@ -72,6 +77,9 @@ function App() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastSavedAtMs, setLastSavedAtMs] = useState<number | null>(null);
   const [showTechnicalBlocks, setShowTechnicalBlocks] = useState(false);
+  const [externallyModified, setExternallyModified] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
 
   const editorContentRef = useRef("");
   const saveRequestRef = useRef(0);
@@ -173,6 +181,7 @@ function App() {
       setLastSavedAtMs(document.updatedAtMs);
       setEditorError(null);
       setSaveState("idle");
+      setExternallyModified(false);
     } catch (cause) {
       setEditorDocument(null);
       setEditorContent("");
@@ -321,6 +330,7 @@ function App() {
       setEditorContent("");
       setLoadedEditorContent("");
       setSaveState("idle");
+      setExternallyModified(false);
     } finally {
       setChangingWorkspace(false);
     }
@@ -336,6 +346,99 @@ function App() {
         (item) => item.relativePath === selectedContentPath,
       ) ?? null
     : null;
+  const commandActions = buildCommandActions({
+    viewingDetail,
+    viewingEditor,
+    hasWorkspace,
+    showTechnicalBlocks,
+    canReloadCurrentFile: Boolean(selectedContentPath),
+    onChooseWorkspace: handleChooseWorkspace,
+    onGoHome: () => {
+      setSelectedSubjectSlug(null);
+      setSelectedContentPath(null);
+      setCommandPaletteOpen(false);
+    },
+    onGoToFiles: () => {
+      setSelectedContentPath(null);
+      setCommandPaletteOpen(false);
+    },
+    onToggleTechnicalBlocks: () => {
+      setShowTechnicalBlocks((current) => !current);
+      setCommandPaletteOpen(false);
+    },
+    onReloadCurrentFile: () => {
+      if (!workspacePath || !selectedSubjectSlug || !selectedContentPath) {
+        return;
+      }
+
+      setCommandPaletteOpen(false);
+      void refreshEditorDocument(workspacePath, selectedSubjectSlug, selectedContentPath);
+    },
+  });
+  const visibleCommandActions = commandActions.filter((action) =>
+    [action.label, action.keywords].join(" ").toLowerCase().includes(commandQuery.trim().toLowerCase()),
+  );
+
+  useEffect(() => {
+    function handleKeydown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandPaletteOpen((current) => !current);
+      }
+
+      if (event.key === "Escape") {
+        setCommandPaletteOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeydown);
+    return () => {
+      window.removeEventListener("keydown", handleKeydown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!commandPaletteOpen) {
+      setCommandQuery("");
+    }
+  }, [commandPaletteOpen]);
+
+  useEffect(() => {
+    if (!workspacePath || !selectedSubjectSlug || !selectedContentPath || !viewingEditor) {
+      setExternallyModified(false);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void (async () => {
+        try {
+          const snapshot = await invoke<ContentFileSnapshot>("get_content_file_snapshot", {
+            workspacePath,
+            subjectSlug: selectedSubjectSlug,
+            relativePath: selectedContentPath,
+          });
+
+          const diskChanged =
+            snapshot.updatedAtMs !== lastSavedAtMs && snapshot.content !== loadedEditorContent;
+
+          setExternallyModified(diskChanged);
+        } catch {
+          setExternallyModified(false);
+        }
+      })();
+    }, 2000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [
+    workspacePath,
+    selectedSubjectSlug,
+    selectedContentPath,
+    viewingEditor,
+    lastSavedAtMs,
+    loadedEditorContent,
+  ]);
 
   return (
     <main className="studio-shell">
@@ -510,9 +613,9 @@ function App() {
               <aside className="workspace-panel editor-screen-panel">
                 <div className="workspace-heading">
                   <p className="preview-label">Arquivo aberto</p>
-                      {selectedContentItem ? (
-                        <span className="status-chip">{selectedContentItem.file}</span>
-                      ) : null}
+                  {selectedContentItem ? (
+                    <span className="status-chip">{selectedContentItem.file}</span>
+                  ) : null}
                       <button
                         type="button"
                         className="ghost-action"
@@ -523,10 +626,15 @@ function App() {
                           : "mostrar blocos tecnicos"}
                       </button>
                     </div>
-                    <div className="subject-detail-flags">
-                      <span className={`status-chip ${saveStateClassName(saveState)}`}>
+                <div className="subject-detail-flags">
+                  <span className={`status-chip ${saveStateClassName(saveState)}`}>
                     {saveStateLabel(saveState, lastSavedAtMs)}
                   </span>
+                  {externallyModified ? (
+                    <span className="status-chip status-chip-warning">
+                      ◎ modificado externamente
+                    </span>
+                  ) : null}
                   {selectedContentItem ? (
                     <span className={`content-status content-status-${selectedContentItem.status}`}>
                       {statusGlyph(selectedContentItem.status)} {statusLabel(selectedContentItem.status)}
@@ -623,7 +731,66 @@ function App() {
           </section>
         )}
       </section>
+      {commandPaletteOpen ? (
+        <CommandPalette
+          query={commandQuery}
+          onQueryChange={setCommandQuery}
+          actions={visibleCommandActions}
+          onClose={() => setCommandPaletteOpen(false)}
+        />
+      ) : null}
     </main>
+  );
+}
+
+function CommandPalette({
+  query,
+  onQueryChange,
+  actions,
+  onClose,
+}: {
+  query: string;
+  onQueryChange: (nextValue: string) => void;
+  actions: CommandAction[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="command-palette-backdrop" onClick={onClose}>
+      <section
+        className="command-palette"
+        aria-label="Command palette"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <input
+          autoFocus
+          type="text"
+          className="command-palette-input"
+          placeholder="Buscar acao..."
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+        />
+        <div className="command-palette-list">
+          {actions.length > 0 ? (
+            actions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                className="command-palette-item"
+                onClick={() => {
+                  action.run();
+                  onClose();
+                }}
+              >
+                <span>{action.label}</span>
+                <span className="command-palette-hint">{action.hint}</span>
+              </button>
+            ))
+          ) : (
+            <div className="command-palette-empty">Nenhuma acao encontrada.</div>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -780,6 +947,92 @@ function ErrorState({ message }: { message: string }) {
       <p className="feedback-copy">{message}</p>
     </div>
   );
+}
+
+type CommandAction = {
+  id: string;
+  label: string;
+  hint: string;
+  keywords: string;
+  run: () => void;
+};
+
+function buildCommandActions({
+  viewingDetail,
+  viewingEditor,
+  hasWorkspace,
+  showTechnicalBlocks,
+  canReloadCurrentFile,
+  onChooseWorkspace,
+  onGoHome,
+  onGoToFiles,
+  onToggleTechnicalBlocks,
+  onReloadCurrentFile,
+}: {
+  viewingDetail: boolean;
+  viewingEditor: boolean;
+  hasWorkspace: boolean;
+  showTechnicalBlocks: boolean;
+  canReloadCurrentFile: boolean;
+  onChooseWorkspace: () => Promise<void>;
+  onGoHome: () => void;
+  onGoToFiles: () => void;
+  onToggleTechnicalBlocks: () => void;
+  onReloadCurrentFile: () => void;
+}) {
+  const actions: CommandAction[] = [];
+
+  if (hasWorkspace) {
+    actions.push({
+      id: "choose-workspace",
+      label: "Alterar pasta",
+      hint: "Workspace",
+      keywords: "pasta workspace caminho alterar selecionar",
+      run: () => {
+        void onChooseWorkspace();
+      },
+    });
+  }
+
+  if (viewingDetail) {
+    actions.push({
+      id: "go-home",
+      label: "Voltar para disciplinas",
+      hint: "Navegacao",
+      keywords: "home disciplinas voltar inicio",
+      run: onGoHome,
+    });
+  }
+
+  if (viewingEditor) {
+    actions.push({
+      id: "go-files",
+      label: "Voltar para arquivos da disciplina",
+      hint: "Navegacao",
+      keywords: "arquivos disciplina voltar lista",
+      run: onGoToFiles,
+    });
+
+    actions.push({
+      id: "toggle-technical-blocks",
+      label: showTechnicalBlocks ? "Ocultar blocos tecnicos" : "Mostrar blocos tecnicos",
+      hint: "Editor",
+      keywords: "blocos tecnicos css frontmatter anotacoes marp mostrar ocultar",
+      run: onToggleTechnicalBlocks,
+    });
+  }
+
+  if (canReloadCurrentFile) {
+    actions.push({
+      id: "reload-current-file",
+      label: "Recarregar arquivo aberto",
+      hint: "Editor",
+      keywords: "recarregar arquivo atualizar modificado externo",
+      run: onReloadCurrentFile,
+    });
+  }
+
+  return actions;
 }
 
 function HomeIcon() {

@@ -64,6 +64,13 @@ struct SaveContentResult {
     updated_at_ms: Option<u64>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContentFileSnapshot {
+    content: String,
+    updated_at_ms: Option<u64>,
+}
+
 #[tauri::command]
 fn list_subjects(workspace_path: String) -> Result<Vec<SubjectSummary>, String> {
     let root = resolve_workspace_root(&workspace_path)?;
@@ -163,6 +170,31 @@ fn save_content_file(
         .map_err(|error| format!("Nao foi possivel salvar {}: {}", relative_path, error))?;
 
     Ok(SaveContentResult {
+        updated_at_ms: fs::metadata(&content_path)
+            .ok()
+            .and_then(|metadata| metadata.modified().ok())
+            .and_then(system_time_to_ms),
+    })
+}
+
+#[tauri::command]
+fn get_content_file_snapshot(
+    workspace_path: String,
+    subject_slug: String,
+    relative_path: String,
+) -> Result<ContentFileSnapshot, String> {
+    let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    let content_path = resolve_content_path(&subject_path, &relative_path)?;
+
+    if !content_path.is_file() {
+        return Err(format!("Arquivo nao encontrado: {}", relative_path));
+    }
+
+    let content = fs::read_to_string(&content_path)
+        .map_err(|error| format!("Nao foi possivel ler {}: {}", relative_path, error))?;
+
+    Ok(ContentFileSnapshot {
+        content,
         updated_at_ms: fs::metadata(&content_path)
             .ok()
             .and_then(|metadata| metadata.modified().ok())
@@ -477,7 +509,8 @@ pub fn run() {
             list_subjects,
             get_subject_detail,
             read_content_file,
-            save_content_file
+            save_content_file,
+            get_content_file_snapshot
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
