@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { MarkdownEditor } from "./components/MarkdownEditor";
@@ -67,20 +73,39 @@ type CreateContentItemResult = {
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 type DeleteTarget =
   | { kind: "subject"; slug: string; name: string }
-  | { kind: "content"; relativePath: string; title: string; label: "aula" | "atividade" };
+  | {
+      kind: "content";
+      relativePath: string;
+      title: string;
+      label: "aula" | "atividade";
+    };
 
 const workspaceStorageKey = "lumen-studio.workspace-path";
-const subjectColorOptions = ["#FFB938", "#F97316", "#22C55E", "#06B6D4", "#2563EB", "#E11D48"];
+const subjectColorOptions = [
+  "#FFB938",
+  "#F97316",
+  "#22C55E",
+  "#06B6D4",
+  "#2563EB",
+  "#E11D48",
+];
 
 function App() {
-  const [workspacePath, setWorkspacePath] = useState(() =>
-    window.localStorage.getItem(workspaceStorageKey) ?? "",
+  const [workspacePath, setWorkspacePath] = useState(
+    () => window.localStorage.getItem(workspaceStorageKey) ?? "",
   );
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
-  const [selectedSubjectSlug, setSelectedSubjectSlug] = useState<string | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<SubjectDetail | null>(null);
-  const [selectedContentPath, setSelectedContentPath] = useState<string | null>(null);
-  const [editorDocument, setEditorDocument] = useState<EditableContentFile | null>(null);
+  const [selectedSubjectSlug, setSelectedSubjectSlug] = useState<string | null>(
+    null,
+  );
+  const [selectedSubject, setSelectedSubject] = useState<SubjectDetail | null>(
+    null,
+  );
+  const [selectedContentPath, setSelectedContentPath] = useState<string | null>(
+    null,
+  );
+  const [editorDocument, setEditorDocument] =
+    useState<EditableContentFile | null>(null);
   const [editorContent, setEditorContent] = useState("");
   const [loadedEditorContent, setLoadedEditorContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -100,7 +125,9 @@ function App() {
   const [createSubjectOpen, setCreateSubjectOpen] = useState(false);
   const [createSubjectStep, setCreateSubjectStep] = useState<1 | 2>(1);
   const [newSubjectName, setNewSubjectName] = useState("");
-  const [newSubjectColor, setNewSubjectColor] = useState(subjectColorOptions[0]);
+  const [newSubjectColor, setNewSubjectColor] = useState(
+    subjectColorOptions[0],
+  );
   const [creatingSubject, setCreatingSubject] = useState(false);
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
   const [newLessonTheme, setNewLessonTheme] = useState("");
@@ -110,7 +137,9 @@ function App() {
   const [creatingActivity, setCreatingActivity] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [processingOutputPath, setProcessingOutputPath] = useState<string | null>(null);
+  const [processingOutputPath, setProcessingOutputPath] = useState<
+    string | null
+  >(null);
 
   const editorContentRef = useRef("");
   const saveRequestRef = useRef(0);
@@ -215,7 +244,9 @@ function App() {
       setEditorDocument(null);
       setEditorContent("");
       setLoadedEditorContent("");
-      setEditorError(describeError(cause, "Falha ao abrir o arquivo selecionado."));
+      setEditorError(
+        describeError(cause, "Falha ao abrir o arquivo selecionado."),
+      );
     } finally {
       setEditorLoading(false);
     }
@@ -244,7 +275,9 @@ function App() {
 
       setLoadedEditorContent(contentToSave);
       setLastSavedAtMs(result.updatedAtMs);
-      setSaveState(editorContentRef.current === contentToSave ? "saved" : "dirty");
+      setSaveState(
+        editorContentRef.current === contentToSave ? "saved" : "dirty",
+      );
 
       await Promise.all([
         refreshSubjects(workspacePath),
@@ -282,7 +315,10 @@ function App() {
       return;
     }
 
-    const availableItems = [...selectedSubject.lessons, ...selectedSubject.activities];
+    const availableItems = [
+      ...selectedSubject.lessons,
+      ...selectedSubject.activities,
+    ];
 
     if (
       selectedContentPath &&
@@ -303,11 +339,20 @@ function App() {
       return;
     }
 
-    void refreshEditorDocument(workspacePath, selectedSubjectSlug, selectedContentPath);
+    void refreshEditorDocument(
+      workspacePath,
+      selectedSubjectSlug,
+      selectedContentPath,
+    );
   }, [workspacePath, selectedSubjectSlug, selectedContentPath]);
 
   useEffect(() => {
-    if (!workspacePath || !selectedSubjectSlug || !selectedContentPath || editorLoading) {
+    if (
+      !workspacePath ||
+      !selectedSubjectSlug ||
+      !selectedContentPath ||
+      editorLoading
+    ) {
       return;
     }
 
@@ -315,7 +360,9 @@ function App() {
       return;
     }
 
-    setSaveState((currentState) => (currentState === "saving" ? currentState : "dirty"));
+    setSaveState((currentState) =>
+      currentState === "saving" ? currentState : "dirty",
+    );
 
     const timeoutId = window.setTimeout(() => {
       void saveDocument(editorContent);
@@ -371,9 +418,12 @@ function App() {
     setCreatingTemplateSubject(true);
 
     try {
-      const result = await invoke<CreateTemplateSubjectResult>("create_template_subject", {
-        workspacePath,
-      });
+      const result = await invoke<CreateTemplateSubjectResult>(
+        "create_template_subject",
+        {
+          workspacePath,
+        },
+      );
 
       await refreshSubjects(workspacePath);
       setSelectedSubjectSlug(result.slug);
@@ -458,7 +508,12 @@ function App() {
   }
 
   async function handleCreateLesson() {
-    if (!workspacePath || !selectedSubjectSlug || !newLessonTheme.trim() || creatingLesson) {
+    if (
+      !workspacePath ||
+      !selectedSubjectSlug ||
+      !newLessonTheme.trim() ||
+      creatingLesson
+    ) {
       return;
     }
 
@@ -497,7 +552,12 @@ function App() {
   }
 
   async function handleCreateActivity() {
-    if (!workspacePath || !selectedSubjectSlug || !newActivityTheme.trim() || creatingActivity) {
+    if (
+      !workspacePath ||
+      !selectedSubjectSlug ||
+      !newActivityTheme.trim() ||
+      creatingActivity
+    ) {
       return;
     }
 
@@ -574,7 +634,10 @@ function App() {
 
       setDeleteTarget(null);
     } catch (cause) {
-      const message = describeError(cause, "Falha ao excluir o item selecionado.");
+      const message = describeError(
+        cause,
+        "Falha ao excluir o item selecionado.",
+      );
 
       if (deleteTarget.kind === "subject") {
         setError(message);
@@ -627,15 +690,21 @@ function App() {
     }
   }
 
-  const totalLessons = subjects.reduce((sum, subject) => sum + subject.lessonCount, 0);
-  const totalActivities = subjects.reduce((sum, subject) => sum + subject.activityCount, 0);
+  const totalLessons = subjects.reduce(
+    (sum, subject) => sum + subject.lessonCount,
+    0,
+  );
+  const totalActivities = subjects.reduce(
+    (sum, subject) => sum + subject.activityCount,
+    0,
+  );
   const hasWorkspace = workspacePath.trim().length > 0;
   const viewingDetail = Boolean(selectedSubjectSlug);
   const viewingEditor = Boolean(selectedContentPath);
   const selectedContentItem = selectedSubject
-    ? [...selectedSubject.lessons, ...selectedSubject.activities].find(
+    ? ([...selectedSubject.lessons, ...selectedSubject.activities].find(
         (item) => item.relativePath === selectedContentPath,
-      ) ?? null
+      ) ?? null)
     : null;
   const commandActions = buildCommandActions({
     viewingDetail,
@@ -671,11 +740,18 @@ function App() {
       }
 
       setCommandPaletteOpen(false);
-      void refreshEditorDocument(workspacePath, selectedSubjectSlug, selectedContentPath);
+      void refreshEditorDocument(
+        workspacePath,
+        selectedSubjectSlug,
+        selectedContentPath,
+      );
     },
   });
   const visibleCommandActions = commandActions.filter((action) =>
-    [action.label, action.keywords].join(" ").toLowerCase().includes(commandQuery.trim().toLowerCase()),
+    [action.label, action.keywords]
+      .join(" ")
+      .toLowerCase()
+      .includes(commandQuery.trim().toLowerCase()),
   );
 
   useEffect(() => {
@@ -703,7 +779,12 @@ function App() {
   }, [commandPaletteOpen]);
 
   useEffect(() => {
-    if (!workspacePath || !selectedSubjectSlug || !selectedContentPath || !viewingEditor) {
+    if (
+      !workspacePath ||
+      !selectedSubjectSlug ||
+      !selectedContentPath ||
+      !viewingEditor
+    ) {
       setExternallyModified(false);
       return;
     }
@@ -711,14 +792,18 @@ function App() {
     const intervalId = window.setInterval(() => {
       void (async () => {
         try {
-          const snapshot = await invoke<ContentFileSnapshot>("get_content_file_snapshot", {
-            workspacePath,
-            subjectSlug: selectedSubjectSlug,
-            relativePath: selectedContentPath,
-          });
+          const snapshot = await invoke<ContentFileSnapshot>(
+            "get_content_file_snapshot",
+            {
+              workspacePath,
+              subjectSlug: selectedSubjectSlug,
+              relativePath: selectedContentPath,
+            },
+          );
 
           const diskChanged =
-            snapshot.updatedAtMs !== lastSavedAtMs && snapshot.content !== loadedEditorContent;
+            snapshot.updatedAtMs !== lastSavedAtMs &&
+            snapshot.content !== loadedEditorContent;
 
           setExternallyModified(diskChanged);
         } catch {
@@ -742,18 +827,29 @@ function App() {
   return (
     <main className="studio-shell">
       <aside className="studio-sidebar" aria-label="Navegacao principal">
-        <div className="sidebar-mark">SS</div>
         <nav className="sidebar-icons">
-          <button type="button" className="sidebar-icon is-active" aria-label="Disciplinas">
+          <button
+            type="button"
+            className="sidebar-icon is-active"
+            aria-label="Disciplinas"
+          >
             <HomeIcon />
           </button>
           <button type="button" className="sidebar-icon" aria-label="Aulas">
             <BookIcon />
           </button>
-          <button type="button" className="sidebar-icon" aria-label="Atividades">
+          <button
+            type="button"
+            className="sidebar-icon"
+            aria-label="Atividades"
+          >
             <ClipboardIcon />
           </button>
-          <button type="button" className="sidebar-icon" aria-label="Configuracoes">
+          <button
+            type="button"
+            className="sidebar-icon"
+            aria-label="Configuracoes"
+          >
             <SettingsIcon />
           </button>
         </nav>
@@ -763,10 +859,11 @@ function App() {
         <header className="stage-header">
           <p className="eyebrow">Lumen Studio</p>
           <div className="header-meta">
-            <span className={`status-chip ${hasWorkspace ? "status-chip-ok" : ""}`}>
+            <span
+              className={`status-chip ${hasWorkspace ? "status-chip-ok" : ""}`}
+            >
               {hasWorkspace ? "◉ pasta conectada" : "◎ selecione uma pasta"}
             </span>
-            <span className="status-chip">Fase 1</span>
           </div>
         </header>
 
@@ -775,14 +872,20 @@ function App() {
             <section className="hero-grid">
               <div className="hero-copy">
                 <p className="hero-kicker">Seu planejamento</p>
-                <h1>Escolha a pasta do seu material e continue de onde parou.</h1>
+                <h1>
+                  Escolha a pasta do seu material e continue de onde parou.
+                </h1>
                 <p className="hero-body">
-                  Selecione a pasta onde suas disciplinas estao organizadas. O aplicativo
-                  lembra essa escolha e voce pode trocar quando quiser.
+                  Selecione a pasta onde suas disciplinas estao organizadas. O
+                  aplicativo lembra essa escolha e voce pode trocar quando
+                  quiser.
                 </p>
               </div>
 
-              <aside className="workspace-panel" aria-label="Resumo do workspace">
+              <aside
+                className="workspace-panel"
+                aria-label="Resumo do workspace"
+              >
                 <div className="workspace-heading">
                   <p className="preview-label">Fonte de dados</p>
                   <button
@@ -799,7 +902,9 @@ function App() {
                   </button>
                 </div>
 
-                <p className={`workspace-path ${hasWorkspace ? "" : "is-empty"}`}>
+                <p
+                  className={`workspace-path ${hasWorkspace ? "" : "is-empty"}`}
+                >
                   {hasWorkspace ? workspacePath : "Nenhuma pasta selecionada."}
                 </p>
 
@@ -820,7 +925,10 @@ function App() {
               </aside>
             </section>
 
-            <section className="subjects-section" aria-labelledby="subjects-title">
+            <section
+              className="subjects-section"
+              aria-labelledby="subjects-title"
+            >
               <div className="section-heading">
                 <div>
                   <p className="preview-label">Disciplinas</p>
@@ -828,7 +936,8 @@ function App() {
                 </div>
                 <div className="section-actions">
                   <p className="section-copy">
-                    Veja rapidamente suas disciplinas e entre na que deseja editar.
+                    Veja rapidamente suas disciplinas e entre na que deseja
+                    editar.
                   </p>
                   {hasWorkspace ? (
                     <button
@@ -843,7 +952,9 @@ function App() {
               </div>
 
               {!hasWorkspace ? (
-                <EmptyWorkspaceState onChooseWorkspace={handleChooseWorkspace} />
+                <EmptyWorkspaceState
+                  onChooseWorkspace={handleChooseWorkspace}
+                />
               ) : null}
               {hasWorkspace && loading ? <LoadingState /> : null}
               {hasWorkspace && error ? <ErrorState message={error} /> : null}
@@ -857,13 +968,17 @@ function App() {
                   <p className="subject-overline">Comecar rapido</p>
                   <h3>Gerar disciplina modelo</h3>
                   <p className="subject-metadata">
-                    Cria uma disciplina completa com contexto, plano, uma aula e uma
-                    atividade de exemplo para demonstrar o fluxo do Studio.
+                    Cria uma disciplina completa com contexto, plano, uma aula e
+                    uma atividade de exemplo para demonstrar o fluxo do Studio.
                   </p>
                   <div className="subject-card-footer">
                     <div className="subject-flags">
-                      <span className="subject-flag is-ready">◉ aula modelo</span>
-                      <span className="subject-flag is-ready">◉ atividade modelo</span>
+                      <span className="subject-flag is-ready">
+                        ◉ aula modelo
+                      </span>
+                      <span className="subject-flag is-ready">
+                        ◉ atividade modelo
+                      </span>
                     </div>
                     <p className="subject-updated">
                       {creatingTemplateSubject ? "criando..." : "1 clique"}
@@ -894,7 +1009,9 @@ function App() {
                             aria-hidden="true"
                           />
                           <span className="status-chip">
-                            <span className="subject-card-slug">{subject.slug}</span>
+                            <span className="subject-card-slug">
+                              {subject.slug}
+                            </span>
                           </span>
                         </div>
 
@@ -902,7 +1019,8 @@ function App() {
                           <p className="subject-overline">disciplina</p>
                           <h3>{subject.displayName}</h3>
                           <p className="subject-metadata">
-                            {subject.lessonCount} aulas · {subject.activityCount} atividades
+                            {subject.lessonCount} aulas ·{" "}
+                            {subject.activityCount} atividades
                           </p>
                         </div>
                       </button>
@@ -910,14 +1028,18 @@ function App() {
                       <div className="subject-card-footer">
                         <div className="subject-flags">
                           <span className={flagClassName(subject.hasContext)}>
-                            {subject.hasContext ? "◉ contexto" : "○ sem contexto"}
+                            {subject.hasContext
+                              ? "◉ contexto"
+                              : "○ sem contexto"}
                           </span>
                           <span className={flagClassName(subject.hasPlan)}>
                             {subject.hasPlan ? "◉ plano" : "○ sem plano"}
                           </span>
                         </div>
                         <div className="subject-card-footer-actions">
-                          <p className="subject-updated">{formatUpdatedAt(subject.updatedAtMs)}</p>
+                          <p className="subject-updated">
+                            {formatUpdatedAt(subject.updatedAtMs)}
+                          </p>
                           <button
                             type="button"
                             className="ghost-action danger-action"
@@ -952,11 +1074,13 @@ function App() {
                 </button>
                 <p className="hero-kicker">Editor</p>
                 <h1 id="editor-title">
-                  {editorDocument?.title ?? selectedContentItem?.title ?? "Abrindo arquivo"}
+                  {editorDocument?.title ??
+                    selectedContentItem?.title ??
+                    "Abrindo arquivo"}
                 </h1>
                 <p className="hero-body">
-                  Edite o conteudo e o aplicativo salva automaticamente pouco depois da sua
-                  ultima alteracao.
+                  Edite o conteudo e o aplicativo salva automaticamente pouco
+                  depois da sua ultima alteracao.
                 </p>
               </div>
 
@@ -964,20 +1088,26 @@ function App() {
                 <div className="workspace-heading">
                   <p className="preview-label">Arquivo aberto</p>
                   {selectedContentItem ? (
-                    <span className="status-chip">{selectedContentItem.file}</span>
+                    <span className="status-chip">
+                      {selectedContentItem.file}
+                    </span>
                   ) : null}
-                      <button
-                        type="button"
-                        className="ghost-action"
-                        onClick={() => setShowTechnicalBlocks((current) => !current)}
-                      >
-                        {showTechnicalBlocks
-                          ? "ocultar blocos tecnicos"
-                          : "mostrar blocos tecnicos"}
-                      </button>
-                    </div>
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() =>
+                      setShowTechnicalBlocks((current) => !current)
+                    }
+                  >
+                    {showTechnicalBlocks
+                      ? "ocultar blocos tecnicos"
+                      : "mostrar blocos tecnicos"}
+                  </button>
+                </div>
                 <div className="subject-detail-flags">
-                  <span className={`status-chip ${saveStateClassName(saveState)}`}>
+                  <span
+                    className={`status-chip ${saveStateClassName(saveState)}`}
+                  >
                     {saveStateLabel(saveState, lastSavedAtMs)}
                   </span>
                   {externallyModified ? (
@@ -986,8 +1116,11 @@ function App() {
                     </span>
                   ) : null}
                   {selectedContentItem ? (
-                    <span className={`content-status content-status-${selectedContentItem.status}`}>
-                      {statusGlyph(selectedContentItem.status)} {statusLabel(selectedContentItem.status)}
+                    <span
+                      className={`content-status content-status-${selectedContentItem.status}`}
+                    >
+                      {statusGlyph(selectedContentItem.status)}{" "}
+                      {statusLabel(selectedContentItem.status)}
                     </span>
                   ) : null}
                 </div>
@@ -997,20 +1130,23 @@ function App() {
             {editorError ? <ErrorState message={editorError} /> : null}
             {editorLoading ? <LoadingState /> : null}
             {!editorLoading && !editorError && editorDocument ? (
-                <section className="editor-panel" aria-label="Editor Markdown">
-                  <div className="editor-surface">
+              <section className="editor-panel" aria-label="Editor Markdown">
+                <div className="editor-surface">
                   <MarkdownEditor
                     key={`${editorDocument.relativePath}-${showTechnicalBlocks ? "show" : "hide"}`}
                     value={editorContent}
                     onChange={setEditorContent}
                     showTechnicalBlocks={showTechnicalBlocks}
                   />
-                  </div>
-                </section>
+                </div>
+              </section>
             ) : null}
           </section>
         ) : (
-          <section className="subject-detail-shell" aria-labelledby="subject-detail-title">
+          <section
+            className="subject-detail-shell"
+            aria-labelledby="subject-detail-title"
+          >
             <div className="subject-detail-header">
               <div className="subject-detail-copy">
                 <button
@@ -1022,10 +1158,12 @@ function App() {
                 </button>
                 <p className="hero-kicker">Disciplina</p>
                 <h1 id="subject-detail-title">
-                  {selectedSubject?.displayName ?? humanizeSlug(selectedSubjectSlug ?? "")}
+                  {selectedSubject?.displayName ??
+                    humanizeSlug(selectedSubjectSlug ?? "")}
                 </h1>
                 <p className="hero-body">
-                  Abra uma aula ou atividade para editar o Markdown com salvamento automatico.
+                  Abra uma aula ou atividade para editar o Markdown com
+                  salvamento automatico.
                 </p>
               </div>
 
@@ -1046,7 +1184,9 @@ function App() {
                   <div className="subject-detail-flags">
                     <span className="status-chip">{selectedSubject.slug}</span>
                     <span className={flagClassName(selectedSubject.hasContext)}>
-                      {selectedSubject.hasContext ? "◉ contexto" : "○ sem contexto"}
+                      {selectedSubject.hasContext
+                        ? "◉ contexto"
+                        : "○ sem contexto"}
                     </span>
                     <span className={flagClassName(selectedSubject.hasPlan)}>
                       {selectedSubject.hasPlan ? "◉ plano" : "○ sem plano"}
@@ -1112,7 +1252,8 @@ function App() {
           {createSubjectStep === 1 ? (
             <div className="modal-stack">
               <p className="modal-copy">
-                Escolha o nome da disciplina. A pasta sera criada automaticamente no seu workspace.
+                Escolha o nome da disciplina. A pasta sera criada
+                automaticamente no seu workspace.
               </p>
               <label className="modal-field">
                 <span className="preview-label">Nome da disciplina</span>
@@ -1126,7 +1267,11 @@ function App() {
                 />
               </label>
               <div className="modal-actions">
-                <button type="button" className="ghost-action" onClick={closeCreateSubjectModal}>
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={closeCreateSubjectModal}
+                >
                   Cancelar
                 </button>
                 <button
@@ -1144,7 +1289,11 @@ function App() {
               <p className="modal-copy">
                 Escolha a cor da disciplina. Ela sera usada no card da home.
               </p>
-              <div className="color-grid" role="radiogroup" aria-label="Escolher cor da disciplina">
+              <div
+                className="color-grid"
+                role="radiogroup"
+                aria-label="Escolher cor da disciplina"
+              >
                 {subjectColorOptions.map((color) => (
                   <button
                     key={color}
@@ -1193,7 +1342,8 @@ function App() {
         <ModalFrame title="+ Aula" onClose={closeCreateLessonModal}>
           <div className="modal-stack">
             <p className="modal-copy">
-              Informe o tema da aula. O arquivo sera criado como Aula {nextContentNumberLabel(selectedSubject?.lessons)}.
+              Informe o tema da aula. O arquivo sera criado como Aula{" "}
+              {nextContentNumberLabel(selectedSubject?.lessons)}.
             </p>
             <label className="modal-field">
               <span className="preview-label">Tema da aula</span>
@@ -1210,12 +1360,17 @@ function App() {
               <div>
                 <p className="preview-label">Titulo</p>
                 <strong>
-                  Aula {nextContentNumberLabel(selectedSubject?.lessons)} - {newLessonTheme.trim() || "Tema da aula"}
+                  Aula {nextContentNumberLabel(selectedSubject?.lessons)} -{" "}
+                  {newLessonTheme.trim() || "Tema da aula"}
                 </strong>
               </div>
             </div>
             <div className="modal-actions">
-              <button type="button" className="ghost-action" onClick={closeCreateLessonModal}>
+              <button
+                type="button"
+                className="ghost-action"
+                onClick={closeCreateLessonModal}
+              >
                 Cancelar
               </button>
               <button
@@ -1234,7 +1389,8 @@ function App() {
         <ModalFrame title="+ Atividade" onClose={closeCreateActivityModal}>
           <div className="modal-stack">
             <p className="modal-copy">
-              Informe o tema da atividade. O arquivo sera criado como Atividade {nextContentNumberLabel(selectedSubject?.activities)}.
+              Informe o tema da atividade. O arquivo sera criado como Atividade{" "}
+              {nextContentNumberLabel(selectedSubject?.activities)}.
             </p>
             <label className="modal-field">
               <span className="preview-label">Tema da atividade</span>
@@ -1251,12 +1407,18 @@ function App() {
               <div>
                 <p className="preview-label">Titulo</p>
                 <strong>
-                  Atividade {nextContentNumberLabel(selectedSubject?.activities)} - {newActivityTheme.trim() || "Tema da atividade"}
+                  Atividade{" "}
+                  {nextContentNumberLabel(selectedSubject?.activities)} -{" "}
+                  {newActivityTheme.trim() || "Tema da atividade"}
                 </strong>
               </div>
             </div>
             <div className="modal-actions">
-              <button type="button" className="ghost-action" onClick={closeCreateActivityModal}>
+              <button
+                type="button"
+                className="ghost-action"
+                onClick={closeCreateActivityModal}
+              >
                 Cancelar
               </button>
               <button
@@ -1290,7 +1452,11 @@ function App() {
               Essa acao remove o arquivo do workspace e nao pode ser desfeita.
             </p>
             <div className="modal-actions">
-              <button type="button" className="ghost-action" onClick={closeDeleteModal}>
+              <button
+                type="button"
+                className="ghost-action"
+                onClick={closeDeleteModal}
+              >
                 Cancelar
               </button>
               <button
@@ -1328,7 +1494,11 @@ function ModalFrame({
 }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <section className="modal-card" aria-label={title} onClick={(event) => event.stopPropagation()}>
+      <section
+        className="modal-card"
+        aria-label={title}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modal-header">
           <div>
             <p className="preview-label">Criacao</p>
@@ -1387,7 +1557,9 @@ function CommandPalette({
               </button>
             ))
           ) : (
-            <div className="command-palette-empty">Nenhuma acao encontrada.</div>
+            <div className="command-palette-empty">
+              Nenhuma acao encontrada.
+            </div>
           )}
         </div>
       </section>
@@ -1452,13 +1624,17 @@ function ContentColumn({
                 onClick={() => onSelect(item.relativePath)}
               >
                 <div className="content-card-top">
-                  <span className={`content-status content-status-${item.status}`}>
+                  <span
+                    className={`content-status content-status-${item.status}`}
+                  >
                     {statusGlyph(item.status)} {statusLabel(item.status)}
                   </span>
                   <span className="content-file">{item.file}</span>
                 </div>
                 <h3>{item.title}</h3>
-                <p className="content-updated">{formatUpdatedAt(item.updatedAtMs)}</p>
+                <p className="content-updated">
+                  {formatUpdatedAt(item.updatedAtMs)}
+                </p>
               </button>
               <div className="content-card-footer">
                 <div className="content-card-footer-actions">
@@ -1504,12 +1680,19 @@ function EmptyWorkspaceState({
   return (
     <div className="feedback-panel" role="status">
       <p className="preview-label">Primeiro passo</p>
-      <p className="feedback-title">Selecione a pasta onde seu material esta salvo.</p>
-      <p className="feedback-copy">
-        Pode ser uma pasta existente ou uma nova pasta para organizar seu planejamento.
-        Depois disso, o aplicativo lembra essa escolha nas proximas aberturas.
+      <p className="feedback-title">
+        Selecione a pasta onde seu material esta salvo.
       </p>
-      <button type="button" className="primary-action" onClick={() => void onChooseWorkspace()}>
+      <p className="feedback-copy">
+        Pode ser uma pasta existente ou uma nova pasta para organizar seu
+        planejamento. Depois disso, o aplicativo lembra essa escolha nas
+        proximas aberturas.
+      </p>
+      <button
+        type="button"
+        className="primary-action"
+        onClick={() => void onChooseWorkspace()}
+      >
         Selecionar pasta
       </button>
     </div>
@@ -1532,7 +1715,9 @@ function saveStateLabel(saveState: SaveState, updatedAtMs: number | null) {
   if (saveState === "saved") return `salvo ${formatClock(updatedAtMs)}`;
   if (saveState === "dirty") return "alteracoes nao salvas";
   if (saveState === "error") return "erro ao salvar";
-  return updatedAtMs ? `pronto ${formatClock(updatedAtMs)}` : "pronto para editar";
+  return updatedAtMs
+    ? `pronto ${formatClock(updatedAtMs)}`
+    : "pronto para editar";
 }
 
 function statusLabel(status: ContentItem["status"]) {
@@ -1712,9 +1897,12 @@ function buildCommandActions({
 
     actions.push({
       id: "toggle-technical-blocks",
-      label: showTechnicalBlocks ? "Ocultar blocos tecnicos" : "Mostrar blocos tecnicos",
+      label: showTechnicalBlocks
+        ? "Ocultar blocos tecnicos"
+        : "Mostrar blocos tecnicos",
       hint: "Editor",
-      keywords: "blocos tecnicos css frontmatter anotacoes marp mostrar ocultar",
+      keywords:
+        "blocos tecnicos css frontmatter anotacoes marp mostrar ocultar",
       run: onToggleTechnicalBlocks,
     });
   }

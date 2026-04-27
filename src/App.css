@@ -5,10 +5,13 @@
 }
 
 .studio-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 1.5rem 0;
   border-right: 1px solid var(--border);
   background:
@@ -16,7 +19,6 @@
     var(--bg-surface);
 }
 
-.sidebar-mark,
 .sidebar-icon,
 .status-chip,
 .eyebrow,
@@ -26,19 +28,6 @@
   font-family: var(--font-ui);
 }
 
-.sidebar-mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: 0.9rem;
-  background: var(--bg-overlay);
-  color: var(--text-primary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-}
 
 .sidebar-icons {
   display: flex;
