@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { MarkdownEditor } from "./components/MarkdownEditor";
@@ -56,13 +56,21 @@ type CreateTemplateSubjectResult = {
   slug: string;
 };
 
+type CreateSubjectResult = {
+  slug: string;
+};
+
 type CreateContentItemResult = {
   relativePath: string;
 };
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+type DeleteTarget =
+  | { kind: "subject"; slug: string; name: string }
+  | { kind: "content"; relativePath: string; title: string; label: "aula" | "atividade" };
 
 const workspaceStorageKey = "senai-studio.workspace-path";
+const subjectColorOptions = ["#FFB938", "#F97316", "#22C55E", "#06B6D4", "#2563EB", "#E11D48"];
 
 function App() {
   const [workspacePath, setWorkspacePath] = useState(() =>
@@ -89,6 +97,20 @@ function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [creatingTemplateSubject, setCreatingTemplateSubject] = useState(false);
+  const [createSubjectOpen, setCreateSubjectOpen] = useState(false);
+  const [createSubjectStep, setCreateSubjectStep] = useState<1 | 2>(1);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSubjectColor, setNewSubjectColor] = useState(subjectColorOptions[0]);
+  const [creatingSubject, setCreatingSubject] = useState(false);
+  const [createLessonOpen, setCreateLessonOpen] = useState(false);
+  const [newLessonTheme, setNewLessonTheme] = useState("");
+  const [creatingLesson, setCreatingLesson] = useState(false);
+  const [createActivityOpen, setCreateActivityOpen] = useState(false);
+  const [newActivityTheme, setNewActivityTheme] = useState("");
+  const [creatingActivity, setCreatingActivity] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [processingOutputPath, setProcessingOutputPath] = useState<string | null>(null);
 
   const editorContentRef = useRef("");
   const saveRequestRef = useRef(0);
@@ -140,7 +162,7 @@ function App() {
       setEditorDocument(null);
       setEditorContent("");
       setLoadedEditorContent("");
-      setError(cause instanceof Error ? cause.message : "Falha ao ler disciplinas.");
+      setError(describeError(cause, "Falha ao ler disciplinas."));
     } finally {
       setLoading(false);
     }
@@ -162,9 +184,7 @@ function App() {
       setDetailError(null);
     } catch (cause) {
       setSelectedSubject(null);
-      setDetailError(
-        cause instanceof Error ? cause.message : "Falha ao carregar a disciplina.",
-      );
+      setDetailError(describeError(cause, "Falha ao carregar a disciplina."));
     } finally {
       setDetailLoading(false);
     }
@@ -195,9 +215,7 @@ function App() {
       setEditorDocument(null);
       setEditorContent("");
       setLoadedEditorContent("");
-      setEditorError(
-        cause instanceof Error ? cause.message : "Falha ao abrir o arquivo selecionado.",
-      );
+      setEditorError(describeError(cause, "Falha ao abrir o arquivo selecionado."));
     } finally {
       setEditorLoading(false);
     }
@@ -238,7 +256,7 @@ function App() {
       }
 
       setSaveState("error");
-      setEditorError(cause instanceof Error ? cause.message : "Falha ao salvar o arquivo.");
+      setEditorError(describeError(cause, "Falha ao salvar o arquivo."));
     }
   }
 
@@ -365,42 +383,248 @@ function App() {
       setLoadedEditorContent("");
       setSaveState("idle");
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Falha ao criar a disciplina modelo.",
-      );
+      setError(describeError(cause, "Falha ao criar a disciplina modelo."));
     } finally {
       setCreatingTemplateSubject(false);
     }
   }
 
-  async function handleCreateLessonDraft() {
-    if (!workspacePath || !selectedSubjectSlug) {
+  function openCreateSubjectModal() {
+    if (!workspacePath) {
       return;
     }
 
-    const result = await invoke<CreateContentItemResult>("create_lesson_draft", {
-      workspacePath,
-      subjectSlug: selectedSubjectSlug,
-    });
-
-    await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
-    setSelectedContentPath(result.relativePath);
+    setNewSubjectName("");
+    setNewSubjectColor(subjectColorOptions[0]);
+    setCreateSubjectStep(1);
+    setCreateSubjectOpen(true);
   }
 
-  async function handleCreateActivityDraft() {
+  function closeCreateSubjectModal() {
+    if (creatingSubject) {
+      return;
+    }
+
+    setCreateSubjectOpen(false);
+    setCreateSubjectStep(1);
+    setNewSubjectName("");
+    setNewSubjectColor(subjectColorOptions[0]);
+  }
+
+  async function handleCreateSubject() {
+    if (!workspacePath || creatingSubject || !newSubjectName.trim()) {
+      return;
+    }
+
+    setCreatingSubject(true);
+
+    try {
+      const result = await invoke<CreateSubjectResult>("create_subject", {
+        workspacePath,
+        name: newSubjectName.trim(),
+        color: newSubjectColor,
+      });
+
+      await refreshSubjects(workspacePath);
+      setSelectedSubjectSlug(result.slug);
+      setSelectedContentPath(null);
+      setEditorDocument(null);
+      setEditorContent("");
+      setLoadedEditorContent("");
+      setSaveState("idle");
+      setCreateSubjectOpen(false);
+      setCreateSubjectStep(1);
+      setNewSubjectName("");
+      setNewSubjectColor(subjectColorOptions[0]);
+    } catch (cause) {
+      setError(describeError(cause, "Falha ao criar a disciplina."));
+    } finally {
+      setCreatingSubject(false);
+    }
+  }
+
+  function openCreateLessonModal() {
+    setNewLessonTheme("");
+    setCreateLessonOpen(true);
+  }
+
+  function closeCreateLessonModal() {
+    if (creatingLesson) {
+      return;
+    }
+
+    setCreateLessonOpen(false);
+    setNewLessonTheme("");
+  }
+
+  async function handleCreateLesson() {
+    if (!workspacePath || !selectedSubjectSlug || !newLessonTheme.trim() || creatingLesson) {
+      return;
+    }
+
+    setCreatingLesson(true);
+
+    try {
+      const result = await invoke<CreateContentItemResult>("create_lesson", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        theme: newLessonTheme.trim(),
+      });
+
+      await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
+      setSelectedContentPath(result.relativePath);
+      setCreateLessonOpen(false);
+      setNewLessonTheme("");
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao criar a aula."));
+    } finally {
+      setCreatingLesson(false);
+    }
+  }
+
+  function openCreateActivityModal() {
+    setNewActivityTheme("");
+    setCreateActivityOpen(true);
+  }
+
+  function closeCreateActivityModal() {
+    if (creatingActivity) {
+      return;
+    }
+
+    setCreateActivityOpen(false);
+    setNewActivityTheme("");
+  }
+
+  async function handleCreateActivity() {
+    if (!workspacePath || !selectedSubjectSlug || !newActivityTheme.trim() || creatingActivity) {
+      return;
+    }
+
+    setCreatingActivity(true);
+
+    try {
+      const result = await invoke<CreateContentItemResult>("create_activity", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        theme: newActivityTheme.trim(),
+      });
+
+      await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
+      setSelectedContentPath(result.relativePath);
+      setCreateActivityOpen(false);
+      setNewActivityTheme("");
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao criar a atividade."));
+    } finally {
+      setCreatingActivity(false);
+    }
+  }
+
+  function closeDeleteModal() {
+    if (deleting) {
+      return;
+    }
+
+    setDeleteTarget(null);
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!workspacePath || !deleteTarget || deleting) {
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      if (deleteTarget.kind === "subject") {
+        await invoke("delete_subject", {
+          workspacePath,
+          subjectSlug: deleteTarget.slug,
+        });
+
+        await refreshSubjects(workspacePath);
+
+        if (selectedSubjectSlug === deleteTarget.slug) {
+          setSelectedSubjectSlug(null);
+          setSelectedSubject(null);
+          setSelectedContentPath(null);
+          setEditorDocument(null);
+          setEditorContent("");
+          setLoadedEditorContent("");
+          setSaveState("idle");
+        }
+      } else if (selectedSubjectSlug) {
+        await invoke("delete_content_item", {
+          workspacePath,
+          subjectSlug: selectedSubjectSlug,
+          relativePath: deleteTarget.relativePath,
+        });
+
+        await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
+
+        if (selectedContentPath === deleteTarget.relativePath) {
+          setSelectedContentPath(null);
+          setEditorDocument(null);
+          setEditorContent("");
+          setLoadedEditorContent("");
+          setSaveState("idle");
+        }
+      }
+
+      setDeleteTarget(null);
+    } catch (cause) {
+      const message = describeError(cause, "Falha ao excluir o item selecionado.");
+
+      if (deleteTarget.kind === "subject") {
+        setError(message);
+      } else {
+        setDetailError(message);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleGenerateContent(item: ContentItem) {
+    if (!workspacePath || !selectedSubjectSlug || processingOutputPath) {
+      return;
+    }
+
+    setProcessingOutputPath(item.relativePath);
+
+    try {
+      await invoke("generate_content_output", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        relativePath: item.relativePath,
+      });
+
+      await Promise.all([
+        refreshSubjects(workspacePath),
+        refreshSubjectDetail(workspacePath, selectedSubjectSlug),
+      ]);
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao gerar o arquivo."));
+    } finally {
+      setProcessingOutputPath(null);
+    }
+  }
+
+  async function handleOpenOutputFolder(item: ContentItem) {
     if (!workspacePath || !selectedSubjectSlug) {
       return;
     }
 
-    const result = await invoke<CreateContentItemResult>("create_activity_draft", {
-      workspacePath,
-      subjectSlug: selectedSubjectSlug,
-    });
-
-    await refreshSubjectDetail(workspacePath, selectedSubjectSlug);
-    setSelectedContentPath(result.relativePath);
+    try {
+      await invoke("open_content_output_folder", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        relativePath: item.relativePath,
+      });
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao abrir a pasta de saida."));
+    }
   }
 
   const totalLessons = subjects.reduce((sum, subject) => sum + subject.lessonCount, 0);
@@ -432,6 +656,10 @@ function App() {
     onToggleTechnicalBlocks: () => {
       setShowTechnicalBlocks((current) => !current);
       setCommandPaletteOpen(false);
+    },
+    onCreateSubject: () => {
+      setCommandPaletteOpen(false);
+      openCreateSubjectModal();
     },
     onCreateTemplateSubject: () => {
       setCommandPaletteOpen(false);
@@ -606,10 +834,9 @@ function App() {
                     <button
                       type="button"
                       className="primary-action"
-                      onClick={() => void handleCreateTemplateSubject()}
-                      disabled={creatingTemplateSubject}
+                      onClick={openCreateSubjectModal}
                     >
-                      {creatingTemplateSubject ? "criando..." : "+ Disciplina"}
+                      + Disciplina
                     </button>
                   ) : null}
                 </div>
@@ -647,37 +874,38 @@ function App() {
               {hasWorkspace && !loading && !error ? (
                 <div className="subjects-grid">
                   {subjects.map((subject) => (
-                    <button
-                      key={subject.id}
-                      type="button"
-                      className="subject-card"
-                      onClick={() => {
-                        setSelectedSubjectSlug(subject.slug);
-                        setSelectedContentPath(null);
-                        setEditorDocument(null);
-                        setEditorContent("");
-                        setLoadedEditorContent("");
-                        setSaveState("idle");
-                      }}
-                    >
-                      <div className="subject-card-top">
-                        <span
-                          className="subject-swatch"
-                          style={{ backgroundColor: subject.color }}
-                          aria-hidden="true"
-                        />
-                        <span className="status-chip">
-                          <span className="subject-card-slug">{subject.slug}</span>
-                        </span>
-                      </div>
+                    <article key={subject.id} className="subject-card">
+                      <button
+                        type="button"
+                        className="subject-card-open"
+                        onClick={() => {
+                          setSelectedSubjectSlug(subject.slug);
+                          setSelectedContentPath(null);
+                          setEditorDocument(null);
+                          setEditorContent("");
+                          setLoadedEditorContent("");
+                          setSaveState("idle");
+                        }}
+                      >
+                        <div className="subject-card-top">
+                          <span
+                            className="subject-swatch"
+                            style={{ backgroundColor: subject.color }}
+                            aria-hidden="true"
+                          />
+                          <span className="status-chip">
+                            <span className="subject-card-slug">{subject.slug}</span>
+                          </span>
+                        </div>
 
-                      <div className="subject-card-body">
-                        <p className="subject-overline">disciplina</p>
-                        <h3>{subject.displayName}</h3>
-                        <p className="subject-metadata">
-                          {subject.lessonCount} aulas · {subject.activityCount} atividades
-                        </p>
-                      </div>
+                        <div className="subject-card-body">
+                          <p className="subject-overline">disciplina</p>
+                          <h3>{subject.displayName}</h3>
+                          <p className="subject-metadata">
+                            {subject.lessonCount} aulas · {subject.activityCount} atividades
+                          </p>
+                        </div>
+                      </button>
 
                       <div className="subject-card-footer">
                         <div className="subject-flags">
@@ -688,9 +916,24 @@ function App() {
                             {subject.hasPlan ? "◉ plano" : "○ sem plano"}
                           </span>
                         </div>
-                        <p className="subject-updated">{formatUpdatedAt(subject.updatedAtMs)}</p>
+                        <div className="subject-card-footer-actions">
+                          <p className="subject-updated">{formatUpdatedAt(subject.updatedAtMs)}</p>
+                          <button
+                            type="button"
+                            className="ghost-action danger-action"
+                            onClick={() =>
+                              setDeleteTarget({
+                                kind: "subject",
+                                slug: subject.slug,
+                                name: subject.displayName,
+                              })
+                            }
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </div>
-                    </button>
+                    </article>
                   ))}
                 </div>
               ) : null}
@@ -825,7 +1068,18 @@ function App() {
                   selectedPath={selectedContentPath}
                   onSelect={setSelectedContentPath}
                   actionLabel="+ Aula"
-                  onAction={() => void handleCreateLessonDraft()}
+                  onAction={openCreateLessonModal}
+                  busyPath={processingOutputPath}
+                  onGenerate={(item) => void handleGenerateContent(item)}
+                  onOpenOutput={(item) => void handleOpenOutputFolder(item)}
+                  onDelete={(item) =>
+                    setDeleteTarget({
+                      kind: "content",
+                      relativePath: item.relativePath,
+                      title: item.title,
+                      label: "aula",
+                    })
+                  }
                 />
                 <ContentColumn
                   title="Atividades"
@@ -835,13 +1089,222 @@ function App() {
                   selectedPath={selectedContentPath}
                   onSelect={setSelectedContentPath}
                   actionLabel="+ Atividade"
-                  onAction={() => void handleCreateActivityDraft()}
+                  onAction={openCreateActivityModal}
+                  busyPath={processingOutputPath}
+                  onGenerate={(item) => void handleGenerateContent(item)}
+                  onOpenOutput={(item) => void handleOpenOutputFolder(item)}
+                  onDelete={(item) =>
+                    setDeleteTarget({
+                      kind: "content",
+                      relativePath: item.relativePath,
+                      title: item.title,
+                      label: "atividade",
+                    })
+                  }
                 />
               </div>
             ) : null}
           </section>
         )}
       </section>
+      {createSubjectOpen ? (
+        <ModalFrame title="Nova disciplina" onClose={closeCreateSubjectModal}>
+          {createSubjectStep === 1 ? (
+            <div className="modal-stack">
+              <p className="modal-copy">
+                Escolha o nome da disciplina. A pasta sera criada automaticamente no seu workspace.
+              </p>
+              <label className="modal-field">
+                <span className="preview-label">Nome da disciplina</span>
+                <input
+                  autoFocus
+                  type="text"
+                  className="modal-input"
+                  placeholder="Ex.: Desenvolvimento Mobile"
+                  value={newSubjectName}
+                  onChange={(event) => setNewSubjectName(event.target.value)}
+                />
+              </label>
+              <div className="modal-actions">
+                <button type="button" className="ghost-action" onClick={closeCreateSubjectModal}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={() => setCreateSubjectStep(2)}
+                  disabled={!newSubjectName.trim()}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="modal-stack">
+              <p className="modal-copy">
+                Escolha a cor da disciplina. Ela sera usada no card da home.
+              </p>
+              <div className="color-grid" role="radiogroup" aria-label="Escolher cor da disciplina">
+                {subjectColorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`color-option ${newSubjectColor === color ? "is-active" : ""}`}
+                    style={{ backgroundColor: color } as CSSProperties}
+                    onClick={() => setNewSubjectColor(color)}
+                    aria-label={`Selecionar cor ${color}`}
+                  />
+                ))}
+              </div>
+              <div className="modal-preview">
+                <span
+                  className="subject-swatch"
+                  style={{ backgroundColor: newSubjectColor }}
+                  aria-hidden="true"
+                />
+                <div>
+                  <p className="preview-label">Previa</p>
+                  <strong>{newSubjectName.trim() || "Nova disciplina"}</strong>
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={() => setCreateSubjectStep(1)}
+                  disabled={creatingSubject}
+                >
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={() => void handleCreateSubject()}
+                  disabled={creatingSubject}
+                >
+                  {creatingSubject ? "criando..." : "Criar disciplina"}
+                </button>
+              </div>
+            </div>
+          )}
+        </ModalFrame>
+      ) : null}
+      {createLessonOpen ? (
+        <ModalFrame title="+ Aula" onClose={closeCreateLessonModal}>
+          <div className="modal-stack">
+            <p className="modal-copy">
+              Informe o tema da aula. O arquivo sera criado como Aula {nextContentNumberLabel(selectedSubject?.lessons)}.
+            </p>
+            <label className="modal-field">
+              <span className="preview-label">Tema da aula</span>
+              <input
+                autoFocus
+                type="text"
+                className="modal-input"
+                placeholder="Ex.: Introducao a APIs REST"
+                value={newLessonTheme}
+                onChange={(event) => setNewLessonTheme(event.target.value)}
+              />
+            </label>
+            <div className="modal-preview">
+              <div>
+                <p className="preview-label">Titulo</p>
+                <strong>
+                  Aula {nextContentNumberLabel(selectedSubject?.lessons)} - {newLessonTheme.trim() || "Tema da aula"}
+                </strong>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="ghost-action" onClick={closeCreateLessonModal}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-action"
+                onClick={() => void handleCreateLesson()}
+                disabled={!newLessonTheme.trim() || creatingLesson}
+              >
+                {creatingLesson ? "criando..." : "Criar aula"}
+              </button>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
+      {createActivityOpen ? (
+        <ModalFrame title="+ Atividade" onClose={closeCreateActivityModal}>
+          <div className="modal-stack">
+            <p className="modal-copy">
+              Informe o tema da atividade. O arquivo sera criado como Atividade {nextContentNumberLabel(selectedSubject?.activities)}.
+            </p>
+            <label className="modal-field">
+              <span className="preview-label">Tema da atividade</span>
+              <input
+                autoFocus
+                type="text"
+                className="modal-input"
+                placeholder="Ex.: Revisao de conceitos principais"
+                value={newActivityTheme}
+                onChange={(event) => setNewActivityTheme(event.target.value)}
+              />
+            </label>
+            <div className="modal-preview">
+              <div>
+                <p className="preview-label">Titulo</p>
+                <strong>
+                  Atividade {nextContentNumberLabel(selectedSubject?.activities)} - {newActivityTheme.trim() || "Tema da atividade"}
+                </strong>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="ghost-action" onClick={closeCreateActivityModal}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-action"
+                onClick={() => void handleCreateActivity()}
+                disabled={!newActivityTheme.trim() || creatingActivity}
+              >
+                {creatingActivity ? "criando..." : "Criar atividade"}
+              </button>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
+      {deleteTarget ? (
+        <ModalFrame
+          title={
+            deleteTarget.kind === "subject"
+              ? "Excluir disciplina"
+              : `Excluir ${deleteTarget.label}`
+          }
+          onClose={closeDeleteModal}
+        >
+          <div className="modal-stack">
+            <p className="modal-copy">
+              {deleteTarget.kind === "subject"
+                ? `Tem certeza que deseja excluir a disciplina "${deleteTarget.name}"?`
+                : `Tem certeza que deseja excluir ${deleteTarget.label === "aula" ? "a aula" : "a atividade"} "${deleteTarget.title}"?`}
+            </p>
+            <p className="modal-copy modal-copy-danger">
+              Essa acao remove o arquivo do workspace e nao pode ser desfeita.
+            </p>
+            <div className="modal-actions">
+              <button type="button" className="ghost-action" onClick={closeDeleteModal}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="ghost-action danger-action"
+                onClick={() => void handleDeleteConfirmed()}
+                disabled={deleting}
+              >
+                {deleting ? "excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
       {commandPaletteOpen ? (
         <CommandPalette
           query={commandQuery}
@@ -851,6 +1314,33 @@ function App() {
         />
       ) : null}
     </main>
+  );
+}
+
+function ModalFrame({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section className="modal-card" aria-label={title} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <p className="preview-label">Criacao</p>
+            <h2>{title}</h2>
+          </div>
+          <button type="button" className="ghost-action" onClick={onClose}>
+            Fechar
+          </button>
+        </div>
+        {children}
+      </section>
+    </div>
   );
 }
 
@@ -914,6 +1404,10 @@ function ContentColumn({
   onSelect,
   actionLabel,
   onAction,
+  busyPath,
+  onGenerate,
+  onOpenOutput,
+  onDelete,
 }: {
   title: string;
   subtitle: string;
@@ -923,6 +1417,10 @@ function ContentColumn({
   onSelect: (relativePath: string) => void;
   actionLabel: string;
   onAction: () => void;
+  busyPath: string | null;
+  onGenerate: (item: ContentItem) => void;
+  onOpenOutput: (item: ContentItem) => void;
+  onDelete: (item: ContentItem) => void;
 }) {
   return (
     <section className="content-column">
@@ -944,23 +1442,53 @@ function ContentColumn({
       ) : (
         <div className="content-list">
           {items.map((item) => (
-            <button
+            <article
               key={item.relativePath}
-              type="button"
-              className={`content-card content-card-button ${
-                selectedPath === item.relativePath ? "is-selected" : ""
-              }`}
-              onClick={() => onSelect(item.relativePath)}
+              className={`content-card ${selectedPath === item.relativePath ? "is-selected" : ""}`}
             >
-              <div className="content-card-top">
-                <span className={`content-status content-status-${item.status}`}>
-                  {statusGlyph(item.status)} {statusLabel(item.status)}
-                </span>
-                <span className="content-file">{item.file}</span>
+              <button
+                type="button"
+                className="content-card-button"
+                onClick={() => onSelect(item.relativePath)}
+              >
+                <div className="content-card-top">
+                  <span className={`content-status content-status-${item.status}`}>
+                    {statusGlyph(item.status)} {statusLabel(item.status)}
+                  </span>
+                  <span className="content-file">{item.file}</span>
+                </div>
+                <h3>{item.title}</h3>
+                <p className="content-updated">{formatUpdatedAt(item.updatedAtMs)}</p>
+              </button>
+              <div className="content-card-footer">
+                <div className="content-card-footer-actions">
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => onGenerate(item)}
+                    disabled={busyPath === item.relativePath}
+                  >
+                    {busyPath === item.relativePath ? "gerando..." : "Gerar"}
+                  </button>
+                  {item.status !== "none" ? (
+                    <button
+                      type="button"
+                      className="ghost-action"
+                      onClick={() => onOpenOutput(item)}
+                    >
+                      Abrir
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="ghost-action danger-action content-delete-button"
+                    onClick={() => onDelete(item)}
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
-              <h3>{item.title}</h3>
-              <p className="content-updated">{formatUpdatedAt(item.updatedAtMs)}</p>
-            </button>
+            </article>
           ))}
         </div>
       )}
@@ -1050,6 +1578,35 @@ function humanizeSlug(value: string) {
     .join(" ");
 }
 
+function describeError(cause: unknown, fallback: string) {
+  if (cause instanceof Error && cause.message) {
+    return cause.message;
+  }
+
+  if (typeof cause === "string" && cause.trim()) {
+    return cause;
+  }
+
+  if (typeof cause === "object" && cause !== null) {
+    const maybeMessage = "message" in cause ? cause.message : null;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+  }
+
+  return fallback;
+}
+
+function nextContentNumberLabel(items: ContentItem[] | undefined) {
+  const maxNumber = (items ?? []).reduce((max, item) => {
+    const match = item.file.match(/_(\d{2})_/);
+    const number = match ? Number(match[1]) : 0;
+    return number > max ? number : max;
+  }, 0);
+
+  return String(maxNumber + 1).padStart(2, "0");
+}
+
 function LoadingState() {
   return (
     <div className="feedback-panel" role="status">
@@ -1084,6 +1641,7 @@ function buildCommandActions({
   showTechnicalBlocks,
   canReloadCurrentFile,
   onChooseWorkspace,
+  onCreateSubject,
   onCreateTemplateSubject,
   onGoHome,
   onGoToFiles,
@@ -1096,6 +1654,7 @@ function buildCommandActions({
   showTechnicalBlocks: boolean;
   canReloadCurrentFile: boolean;
   onChooseWorkspace: () => Promise<void>;
+  onCreateSubject: () => void;
   onCreateTemplateSubject: () => void;
   onGoHome: () => void;
   onGoToFiles: () => void;
@@ -1105,6 +1664,14 @@ function buildCommandActions({
   const actions: CommandAction[] = [];
 
   if (hasWorkspace) {
+    actions.push({
+      id: "create-subject",
+      label: "Nova disciplina",
+      hint: "Criacao",
+      keywords: "nova disciplina criar vazia",
+      run: onCreateSubject,
+    });
+
     actions.push({
       id: "choose-workspace",
       label: "Alterar pasta",
