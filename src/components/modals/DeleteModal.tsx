@@ -24,7 +24,7 @@ export function DeleteModal({
             : `Tem certeza que deseja excluir ${target.label === "aula" ? "a aula" : "a atividade"} "${target.title}"?`}
         </p>
         <p className="modal-copy modal-copy-danger">
-          Essa acao remove o arquivo do workspace e nao pode ser desfeita.
+          Essa ação remove o arquivo do workspace e não pode ser desfeita.
         </p>
         <div className="modal-actions">
           <button type="button" className="ghost-action" onClick={onClose}>

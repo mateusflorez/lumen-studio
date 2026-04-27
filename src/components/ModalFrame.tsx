@@ -18,7 +18,7 @@ export function ModalFrame({
       >
         <div className="modal-header">
           <div>
-            <p className="preview-label">Criacao</p>
+            <p className="preview-label">Criação</p>
             <h2>{title}</h2>
           </div>
           <button type="button" className="ghost-action" onClick={onClose}>

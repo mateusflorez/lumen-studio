@@ -38,7 +38,7 @@ export function CreateContentModal({
     <ModalFrame title={isLesson ? "+ Aula" : "+ Atividade"} onClose={handleClose}>
       <div className="modal-stack">
         <p className="modal-copy">
-          Informe o tema {isLesson ? "da aula" : "da atividade"}. O arquivo sera criado como{" "}
+          Informe o tema {isLesson ? "da aula" : "da atividade"}. O arquivo será criado como{" "}
           {isLesson ? "Aula" : "Atividade"} {numberLabel}.
         </p>
         <label className="modal-field">
@@ -54,7 +54,7 @@ export function CreateContentModal({
         </label>
         <div className="modal-preview">
           <div>
-            <p className="preview-label">Titulo</p>
+            <p className="preview-label">Título</p>
             <strong>
               {isLesson ? "Aula" : "Atividade"} {numberLabel} -{" "}
               {theme.trim() || (isLesson ? "Tema da aula" : "Tema da atividade")}

@@ -1115,6 +1115,35 @@
   box-shadow: 0 32px 70px rgba(0, 0, 0, 0.42);
 }
 
+.modal-card--preview {
+  width: min(90vw, 72rem);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-preview-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin-top: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+}
+
+.modal-preview-body .marp-preview,
+.modal-preview-body .marp-preview--activity {
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
+.modal-preview-body .marp-preview-frame,
+.modal-preview-body .activity-preview-frame {
+  height: 60vh;
+}
+
 .modal-header,
 .modal-actions,
 .modal-preview {

@@ -14,7 +14,7 @@ export function saveStateClassName(saveState: SaveState) {
 export function saveStateLabel(saveState: SaveState, updatedAtMs: number | null) {
   if (saveState === "saving") return "salvando...";
   if (saveState === "saved") return `salvo ${formatClock(updatedAtMs)}`;
-  if (saveState === "dirty") return "alteracoes nao salvas";
+  if (saveState === "dirty") return "alterações não salvas";
   if (saveState === "error") return "erro ao salvar";
   return updatedAtMs ? `pronto ${formatClock(updatedAtMs)}` : "pronto para editar";
 }

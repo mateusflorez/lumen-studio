@@ -40,8 +40,8 @@ export function HomeScreen({
           <p className="hero-kicker">Seu planejamento</p>
           <h1>Escolha a pasta do seu material e continue de onde parou.</h1>
           <p className="hero-body">
-            Selecione a pasta onde suas disciplinas estao organizadas. O
-            aplicativo lembra essa escolha e voce pode trocar quando quiser.
+            Selecione a pasta onde suas disciplinas estão organizadas. O
+            aplicativo lembra essa escolha e você pode trocar quando quiser.
           </p>
         </div>
 
@@ -115,7 +115,7 @@ export function HomeScreen({
             onClick={onCreateTemplateSubject}
             disabled={creatingTemplateSubject}
           >
-            <p className="subject-overline">Comecar rapido</p>
+            <p className="subject-overline">Começar rápido</p>
             <h3>Gerar disciplina modelo</h3>
             <p className="subject-metadata">
               Cria uma disciplina completa com contexto, plano, uma aula e uma

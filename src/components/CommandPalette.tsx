@@ -28,7 +28,7 @@ export function CommandPalette({
           autoFocus
           type="text"
           className="command-palette-input"
-          placeholder="Buscar acao..."
+          placeholder="Buscar ação..."
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
@@ -49,7 +49,7 @@ export function CommandPalette({
               </button>
             ))
           ) : (
-            <div className="command-palette-empty">Nenhuma acao encontrada.</div>
+            <div className="command-palette-empty">Nenhuma ação encontrada.</div>
           )}
         </div>
       </section>
@@ -94,7 +94,7 @@ export function buildCommandActions({
     actions.push({
       id: "create-subject",
       label: "Nova disciplina",
-      hint: "Criacao",
+      hint: "Criação",
       keywords: "nova disciplina criar vazia",
       run: onCreateSubject,
     });
@@ -108,15 +108,15 @@ export function buildCommandActions({
     actions.push({
       id: "create-template-subject",
       label: "Nova disciplina modelo",
-      hint: "Criacao",
+      hint: "Criação",
       keywords: "nova disciplina modelo criar gerar exemplo",
       run: onCreateTemplateSubject,
     });
     actions.push({
       id: "open-settings",
-      label: "Abrir configuracoes",
+      label: "Abrir configurações",
       hint: "Sistema",
-      keywords: "configuracoes visual logo background assets",
+      keywords: "configurações visual logo background assets",
       run: onOpenSettings,
     });
   }
@@ -125,8 +125,8 @@ export function buildCommandActions({
     actions.push({
       id: "go-home",
       label: "Voltar para disciplinas",
-      hint: "Navegacao",
-      keywords: "home disciplinas voltar inicio",
+      hint: "Navegação",
+      keywords: "home disciplinas voltar início",
       run: onGoHome,
     });
   }
@@ -135,7 +135,7 @@ export function buildCommandActions({
     actions.push({
       id: "go-files",
       label: "Voltar para arquivos da disciplina",
-      hint: "Navegacao",
+      hint: "Navegação",
       keywords: "arquivos disciplina voltar lista",
       run: onGoToFiles,
     });

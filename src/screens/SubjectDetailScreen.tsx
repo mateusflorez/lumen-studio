@@ -20,6 +20,7 @@ export function SubjectDetailScreen({
   onGenerate,
   onOpenOutput,
   onDeleteContent,
+  onPreviewContent,
 }: {
   workspacePath: string;
   changingWorkspace: boolean;
@@ -37,6 +38,7 @@ export function SubjectDetailScreen({
   onGenerate: (item: ContentItem) => void;
   onOpenOutput: (item: ContentItem) => void;
   onDeleteContent: (item: ContentItem) => void;
+  onPreviewContent: (item: ContentItem) => void;
 }) {
   return (
     <section className="subject-detail-shell" aria-labelledby="subject-detail-title">
@@ -50,7 +52,7 @@ export function SubjectDetailScreen({
             {selectedSubject?.displayName ?? humanizeSlug(selectedSubjectSlug)}
           </h1>
           <p className="hero-body">
-            Abra uma aula ou atividade para editar o Markdown com salvamento automatico.
+            Abra uma aula ou atividade para editar o Markdown com salvamento automático.
           </p>
         </div>
 
@@ -98,6 +100,7 @@ export function SubjectDetailScreen({
             onGenerate={onGenerate}
             onOpenOutput={onOpenOutput}
             onDelete={onDeleteContent}
+            onPreview={onPreviewContent}
           />
           <ContentColumn
             title="Atividades"
@@ -112,6 +115,7 @@ export function SubjectDetailScreen({
             onGenerate={onGenerate}
             onOpenOutput={onOpenOutput}
             onDelete={onDeleteContent}
+            onPreview={onPreviewContent}
           />
         </div>
       ) : null}

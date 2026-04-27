@@ -28,7 +28,7 @@ export function MarpPreview({
         setError(null);
       } catch (cause) {
         if (cancelled) return;
-        setError(typeof cause === "string" ? cause : "Falha ao renderizar preview.");
+        setError(typeof cause === "string" ? cause : "Falha ao renderizar prévia.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -43,7 +43,7 @@ export function MarpPreview({
   return (
     <div className="marp-preview">
       <div className="marp-preview-header">
-        <p className="preview-label">Preview dos slides</p>
+        <p className="preview-label">Prévia dos slides</p>
         {loading && (
           <span className="status-chip status-chip-saving">● renderizando</span>
         )}
@@ -61,7 +61,7 @@ export function MarpPreview({
         />
       ) : (
         <div className="marp-preview-body">
-          <span>Preparando renderizacao...</span>
+          <span>Preparando renderização...</span>
         </div>
       )}
     </div>

@@ -23,6 +23,7 @@ import { CommandPalette, buildCommandActions } from "./components/CommandPalette
 import { CreateSubjectModal } from "./components/modals/CreateSubjectModal";
 import { CreateContentModal } from "./components/modals/CreateContentModal";
 import { DeleteModal } from "./components/modals/DeleteModal";
+import { PreviewModal } from "./components/modals/PreviewModal";
 import { HomeScreen } from "./screens/HomeScreen";
 import { SubjectDetailScreen } from "./screens/SubjectDetailScreen";
 import { EditorScreen } from "./screens/EditorScreen";
@@ -60,6 +61,7 @@ function App() {
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
   const [createActivityOpen, setCreateActivityOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [previewItem, setPreviewItem] = useState<ContentItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [processingOutputPath, setProcessingOutputPath] = useState<string | null>(null);
   const [assetSettings, setAssetSettings] = useState<AssetSettingsState | null>(null);
@@ -147,7 +149,7 @@ function App() {
       setAssetSettingsError(null);
     } catch (cause) {
       setAssetSettings(null);
-      setAssetSettingsError(describeError(cause, "Falha ao ler as configuracoes visuais."));
+      setAssetSettingsError(describeError(cause, "Falha ao ler as configurações visuais."));
     } finally {
       setAssetSettingsLoading(false);
     }
@@ -445,7 +447,7 @@ function App() {
         relativePath: item.relativePath,
       });
     } catch (cause) {
-      setDetailError(describeError(cause, "Falha ao abrir a pasta de saida."));
+      setDetailError(describeError(cause, "Falha ao abrir a pasta de saída."));
     }
   }
 
@@ -604,7 +606,7 @@ function App() {
 
   return (
     <main className="studio-shell">
-      <aside className="studio-sidebar" aria-label="Navegacao principal">
+      <aside className="studio-sidebar" aria-label="Navegação principal">
         <nav className="sidebar-icons">
           <button
             type="button"
@@ -623,7 +625,7 @@ function App() {
           <button
             type="button"
             className={`sidebar-icon${showingSettings ? " is-active" : ""}`}
-            aria-label="Configuracoes"
+            aria-label="Configurações"
             onClick={() => {
               setSelectedContentPath(null);
               setSelectedSubjectSlug(null);
@@ -725,6 +727,7 @@ function App() {
                 label: item.relativePath.startsWith("aulas/") ? "aula" : "atividade",
               })
             }
+            onPreviewContent={(item) => setPreviewItem(item)}
           />
         )}
       </section>
@@ -807,6 +810,15 @@ function App() {
           deleting={deleting}
           onClose={() => { if (!deleting) setDeleteTarget(null); }}
           onConfirm={() => void handleDeleteConfirmed()}
+        />
+      ) : null}
+
+      {previewItem && selectedSubjectSlug ? (
+        <PreviewModal
+          workspacePath={workspacePath}
+          subjectSlug={selectedSubjectSlug}
+          item={previewItem}
+          onClose={() => setPreviewItem(null)}
         />
       ) : null}
 

@@ -51,8 +51,8 @@ export function EditorScreen({
             {editorDocument?.title ?? selectedContentItem?.title ?? "Abrindo arquivo"}
           </h1>
           <p className="hero-body">
-            Edite o conteudo e o aplicativo salva automaticamente pouco depois
-            da sua ultima alteracao.
+            Edite o conteúdo e o aplicativo salva automaticamente pouco depois
+            da sua última alteração.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export function EditorScreen({
                 className={`ghost-action${previewVisible ? " ghost-action--active" : ""}`}
                 onClick={onToggleMarpPreview}
               >
-                {previewVisible ? "ocultar preview" : "mostrar preview"}
+                {previewVisible ? "ocultar prévia" : "mostrar prévia"}
               </button>
             ) : null}
           </div>

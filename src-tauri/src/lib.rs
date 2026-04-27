@@ -157,7 +157,7 @@ const COLOR_THEME_PRESETS: [ColorThemePreset; 10] = [
 fn list_subjects(workspace_path: String) -> Result<Vec<SubjectSummary>, String> {
     let root = resolve_workspace_root(&workspace_path)?;
     let entries = fs::read_dir(&root)
-        .map_err(|error| format!("Nao foi possivel ler o workspace {:?}: {}", root, error))?;
+        .map_err(|error| format!("Não foi possível ler o workspace {:?}: {}", root, error))?;
 
     let mut subjects = entries
         .filter_map(Result::ok)
@@ -210,11 +210,11 @@ fn read_content_file(
     let content_path = resolve_content_path(&subject_path, &relative_path)?;
 
     if !content_path.is_file() {
-        return Err(format!("Arquivo nao encontrado: {}", relative_path));
+        return Err(format!("Arquivo não encontrado: {}", relative_path));
     }
 
     let content = fs::read_to_string(&content_path)
-        .map_err(|error| format!("Nao foi possivel abrir {}: {}", relative_path, error))?;
+        .map_err(|error| format!("Não foi possível abrir {}: {}", relative_path, error))?;
     let file = content_path
         .file_name()
         .and_then(|value| value.to_str())
@@ -245,11 +245,11 @@ fn save_content_file(
     let content_path = resolve_content_path(&subject_path, &relative_path)?;
 
     if !content_path.is_file() {
-        return Err(format!("Arquivo nao encontrado: {}", relative_path));
+        return Err(format!("Arquivo não encontrado: {}", relative_path));
     }
 
     fs::write(&content_path, content)
-        .map_err(|error| format!("Nao foi possivel salvar {}: {}", relative_path, error))?;
+        .map_err(|error| format!("Não foi possível salvar {}: {}", relative_path, error))?;
 
     Ok(SaveContentResult {
         updated_at_ms: fs::metadata(&content_path)
@@ -269,11 +269,11 @@ fn get_content_file_snapshot(
     let content_path = resolve_content_path(&subject_path, &relative_path)?;
 
     if !content_path.is_file() {
-        return Err(format!("Arquivo nao encontrado: {}", relative_path));
+        return Err(format!("Arquivo não encontrado: {}", relative_path));
     }
 
     let content = fs::read_to_string(&content_path)
-        .map_err(|error| format!("Nao foi possivel ler {}: {}", relative_path, error))?;
+        .map_err(|error| format!("Não foi possível ler {}: {}", relative_path, error))?;
 
     Ok(ContentFileSnapshot {
         content,
@@ -289,7 +289,7 @@ fn delete_subject(workspace_path: String, subject_slug: String) -> Result<(), St
     let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
 
     fs::remove_dir_all(&subject_path)
-        .map_err(|error| format!("Nao foi possivel excluir a disciplina: {}", error))?;
+        .map_err(|error| format!("Não foi possível excluir a disciplina: {}", error))?;
 
     Ok(())
 }
@@ -304,11 +304,11 @@ fn delete_content_item(
     let content_path = resolve_content_path(&subject_path, &relative_path)?;
 
     if !content_path.is_file() {
-        return Err(format!("Arquivo nao encontrado: {}", relative_path));
+        return Err(format!("Arquivo não encontrado: {}", relative_path));
     }
 
     fs::remove_file(&content_path)
-        .map_err(|error| format!("Nao foi possivel excluir o arquivo: {}", error))?;
+        .map_err(|error| format!("Não foi possível excluir o arquivo: {}", error))?;
 
     Ok(())
 }
@@ -326,7 +326,7 @@ fn generate_content_output(
     let file_name = content_path
         .file_name()
         .and_then(|value| value.to_str())
-        .ok_or_else(|| "Nome de arquivo invalido.".to_string())?;
+        .ok_or_else(|| "Nome de arquivo inválido.".to_string())?;
 
     if relative_path.starts_with("aulas/") {
         generate_lesson_output(&tool_root, &content_path, file_name)?;
@@ -338,7 +338,7 @@ fn generate_content_output(
         return Ok(());
     }
 
-    Err("Esse tipo de arquivo nao possui geracao configurada.".to_string())
+    Err("Esse tipo de arquivo não possui geração configurada.".to_string())
 }
 
 #[tauri::command]
@@ -349,16 +349,16 @@ fn open_content_output_folder(
 ) -> Result<(), String> {
     let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
     let output_dir = output_dir_for_relative_path(&subject_path, &relative_path)
-        .ok_or_else(|| "Esse tipo de arquivo nao possui pasta de saida.".to_string())?;
+        .ok_or_else(|| "Esse tipo de arquivo não possui pasta de saída.".to_string())?;
 
     if !output_dir.is_dir() {
-        return Err("A pasta de saida ainda nao existe para este arquivo.".to_string());
+        return Err("A pasta de saída ainda não existe para este arquivo.".to_string());
     }
 
     Command::new("explorer")
         .arg(&output_dir)
         .spawn()
-        .map_err(|error| format!("Nao foi possivel abrir a pasta de saida: {}", error))?;
+        .map_err(|error| format!("Não foi possível abrir a pasta de saída: {}", error))?;
 
     Ok(())
 }
@@ -383,32 +383,32 @@ fn create_template_subject(
         .and_then(|_| fs::create_dir_all(&models_dir))
         .and_then(|_| fs::create_dir_all(&references_dir))
         .and_then(|_| fs::create_dir_all(&assets_dir))
-        .map_err(|error| format!("Nao foi possivel criar a disciplina modelo: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar a disciplina modelo: {}", error))?;
 
     fs::write(
         subject_path.join(".conf"),
         r##"{"nome":"Disciplina Modelo","cor":"#F97316"}"##,
     )
-    .map_err(|error| format!("Nao foi possivel criar .conf: {}", error))?;
+    .map_err(|error| format!("Não foi possível criar .conf: {}", error))?;
 
     fs::write(subject_path.join("contexto.md"), template_context())
-        .map_err(|error| format!("Nao foi possivel criar contexto.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar contexto.md: {}", error))?;
     fs::write(subject_path.join("plano_geral.md"), template_plan())
-        .map_err(|error| format!("Nao foi possivel criar plano_geral.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar plano_geral.md: {}", error))?;
     fs::write(&lesson_path, template_lesson())
-        .map_err(|error| format!("Nao foi possivel criar aula modelo: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar aula modelo: {}", error))?;
     fs::write(&activity_path, template_activity())
-        .map_err(|error| format!("Nao foi possivel criar atividade modelo: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar atividade modelo: {}", error))?;
     fs::write(models_dir.join("modelo_aula_marp.md"), template_lesson_model())
-        .map_err(|error| format!("Nao foi possivel criar modelo_aula_marp.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar modelo_aula_marp.md: {}", error))?;
     fs::write(models_dir.join("modelo_plano_geral.md"), template_plan_model())
-        .map_err(|error| format!("Nao foi possivel criar modelo_plano_geral.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar modelo_plano_geral.md: {}", error))?;
     fs::write(references_dir.join("notas.md"), template_notes())
-        .map_err(|error| format!("Nao foi possivel criar notas.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar notas.md: {}", error))?;
     fs::write(assets_dir.join("exemplo_fluxo.svg"), template_flow_svg())
-        .map_err(|error| format!("Nao foi possivel criar exemplo_fluxo.svg: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar exemplo_fluxo.svg: {}", error))?;
     fs::write(assets_dir.join("exemplo_interface.svg"), template_ui_svg())
-        .map_err(|error| format!("Nao foi possivel criar exemplo_interface.svg: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar exemplo_interface.svg: {}", error))?;
 
     Ok(CreateTemplateSubjectResult { slug })
 }
@@ -431,7 +431,7 @@ fn create_subject(
 
     let base_slug = to_snake_case(trimmed_name);
     if base_slug.is_empty() {
-        return Err("Nao foi possivel gerar um nome de pasta valido para a disciplina.".to_string());
+        return Err("Não foi possível gerar um nome de pasta válido para a disciplina.".to_string());
     }
 
     let slug = next_available_subject_slug(&root, &base_slug);
@@ -441,18 +441,18 @@ fn create_subject(
         .and_then(|_| fs::create_dir_all(subject_path.join("atividades")))
         .and_then(|_| fs::create_dir_all(subject_path.join("modelos")))
         .and_then(|_| fs::create_dir_all(subject_path.join("referencias")))
-        .map_err(|error| format!("Nao foi possivel criar a disciplina: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar a disciplina: {}", error))?;
 
     fs::write(
         subject_path.join(".conf"),
         format!(r##"{{"nome":"{}","cor":"{}"}}"##, escape_json(trimmed_name), color),
     )
-    .map_err(|error| format!("Nao foi possivel criar .conf: {}", error))?;
+    .map_err(|error| format!("Não foi possível criar .conf: {}", error))?;
 
     fs::write(subject_path.join("contexto.md"), empty_context_template(trimmed_name))
-        .map_err(|error| format!("Nao foi possivel criar contexto.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar contexto.md: {}", error))?;
     fs::write(subject_path.join("plano_geral.md"), empty_plan_template(trimmed_name))
-        .map_err(|error| format!("Nao foi possivel criar plano_geral.md: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar plano_geral.md: {}", error))?;
 
     Ok(CreateSubjectResult { slug })
 }
@@ -481,7 +481,7 @@ fn create_lesson(
         subject_path.join(&relative_path),
         template_lesson_draft(next_number, trimmed_theme),
     )
-        .map_err(|error| format!("Nao foi possivel criar a aula: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar a aula: {}", error))?;
 
     Ok(CreateContentItemResult { relative_path })
 }
@@ -510,7 +510,7 @@ fn create_activity(
         subject_path.join(&relative_path),
         template_activity_draft(next_number, trimmed_theme),
     )
-        .map_err(|error| format!("Nao foi possivel criar a atividade: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar a atividade: {}", error))?;
 
     Ok(CreateContentItemResult { relative_path })
 }
@@ -795,7 +795,7 @@ fn resolve_workspace_root(workspace_path: &str) -> Result<PathBuf, String> {
 
     let path = PathBuf::from(trimmed);
     if !path.is_dir() {
-        return Err(format!("O caminho selecionado nao existe ou nao e uma pasta: {}", trimmed));
+        return Err(format!("O caminho selecionado não existe ou não é uma pasta: {}", trimmed));
     }
 
     Ok(path)
@@ -806,7 +806,7 @@ fn resolve_subject_path(workspace_path: &str, subject_slug: &str) -> Result<Path
     let subject_path = root.join(subject_slug);
 
     if !subject_path.is_dir() || !is_subject_directory(&subject_path) {
-        return Err(format!("Disciplina nao encontrada: {}", subject_slug));
+        return Err(format!("Disciplina não encontrada: {}", subject_slug));
     }
 
     Ok(subject_path)
@@ -820,7 +820,7 @@ fn resolve_content_path(subject_path: &Path, relative_path: &str) -> Result<Path
 
     let relative = Path::new(trimmed);
     if relative.components().any(|component| !matches!(component, Component::Normal(_))) {
-        return Err(format!("Caminho invalido: {}", relative_path));
+        return Err(format!("Caminho inválido: {}", relative_path));
     }
 
     if !relative
@@ -882,7 +882,7 @@ fn resolve_generation_tool_root(workspace_root: &Path) -> Result<PathBuf, String
         }
     }
 
-    Err("Nao encontrei as ferramentas de geracao. Esperava encontrar node_modules com Marp e markdown-it no projeto base do SENAI.".to_string())
+    Err("Não encontrei as ferramentas de geração. Esperava encontrar node_modules com Marp e markdown-it no projeto base do SENAI.".to_string())
 }
 
 fn generate_lesson_output(
@@ -892,20 +892,20 @@ fn generate_lesson_output(
 ) -> Result<(), String> {
     let marp_bin = root.join("node_modules").join(".bin").join("marp.cmd");
     if !marp_bin.is_file() {
-        return Err("Marp CLI nao encontrado em node_modules/.bin/marp.cmd.".to_string());
+        return Err("Marp CLI não encontrado em node_modules/.bin/marp.cmd.".to_string());
     }
 
     let subject_path = content_path
         .parent()
         .and_then(|path| path.parent())
-        .ok_or_else(|| "Nao foi possivel localizar a disciplina da aula.".to_string())?;
+        .ok_or_else(|| "Não foi possível localizar a disciplina da aula.".to_string())?;
     let output_dir = subject_path.join("slides");
     fs::create_dir_all(&output_dir)
-        .map_err(|error| format!("Nao foi possivel criar a pasta de slides: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar a pasta de slides: {}", error))?;
 
     let output_file = output_dir.join(format!("{}.pptx", file_stem(file_name)));
     let content = fs::read_to_string(content_path)
-        .map_err(|error| format!("Nao foi possivel ler a aula para gerar o slide: {}", error))?;
+        .map_err(|error| format!("Não foi possível ler a aula para gerar o slide: {}", error))?;
     let resolved_assets = resolve_asset_settings()?;
     let prepared_content = prepare_lesson_markdown_for_render(&content, &resolved_assets)?;
     let temp_input = std::env::temp_dir().join(format!(
@@ -917,7 +917,7 @@ fn generate_lesson_output(
             .unwrap_or(0)
     ));
     fs::write(&temp_input, prepared_content)
-        .map_err(|error| format!("Nao foi possivel preparar a aula para exportacao: {}", error))?;
+        .map_err(|error| format!("Não foi possível preparar a aula para exportação: {}", error))?;
 
     let marp_bin_string = marp_bin.to_string_lossy().to_string();
     let output_file_string = output_file.to_string_lossy().to_string();
@@ -934,12 +934,12 @@ fn generate_lesson_output(
             content_path_string.as_str(),
         ])
         .status()
-        .map_err(|error| format!("Nao foi possivel executar o Marp CLI: {}", error))?;
+        .map_err(|error| format!("Não foi possível executar o Marp CLI: {}", error))?;
 
     let _ = fs::remove_file(&temp_input);
 
     if !status.success() || !output_file.is_file() {
-        return Err("Falha ao gerar o slide. Verifique se o Marp CLI esta instalado corretamente.".to_string());
+        return Err("Falha ao gerar o slide. Verifique se o Marp CLI está instalado corretamente.".to_string());
     }
 
     Ok(())
@@ -953,14 +953,14 @@ fn generate_activity_output(
 ) -> Result<(), String> {
     let markdown_it_module = root.join("node_modules").join("markdown-it");
     if !markdown_it_module.exists() {
-        return Err("markdown-it nao encontrado em node_modules.".to_string());
+        return Err("markdown-it não encontrado em node_modules.".to_string());
     }
 
     let browser_path = detect_browser_path()
         .ok_or_else(|| "Nenhum Chrome ou Edge local foi encontrado para gerar PDF.".to_string())?;
     let output_dir = subject_path.join("atividades").join("pdfs");
     fs::create_dir_all(&output_dir)
-        .map_err(|error| format!("Nao foi possivel criar a pasta de PDFs: {}", error))?;
+        .map_err(|error| format!("Não foi possível criar a pasta de PDFs: {}", error))?;
 
     let output_file = output_dir.join(format!("{}.pdf", file_stem(file_name)));
     let temp_html = output_dir.join(format!("._tmp_{}.html", file_stem(file_name)));
@@ -987,10 +987,10 @@ fn generate_activity_output(
         .arg(logo_path.as_str())
         .arg(theme_id.as_str())
         .status()
-        .map_err(|error| format!("Nao foi possivel preparar o HTML da atividade: {}", error))?;
+        .map_err(|error| format!("Não foi possível preparar o HTML da atividade: {}", error))?;
 
     if !render_status.success() || !temp_html.is_file() {
-        return Err("Falha ao preparar o HTML da atividade para exportacao.".to_string());
+        return Err("Falha ao preparar o HTML da atividade para exportação.".to_string());
     }
 
     let file_url = format!("file:///{}", temp_html.to_string_lossy().replace('\\', "/"));
@@ -1002,7 +1002,7 @@ fn generate_activity_output(
             file_url.as_str(),
         ])
         .status()
-        .map_err(|error| format!("Nao foi possivel gerar o PDF da atividade: {}", error))?;
+        .map_err(|error| format!("Não foi possível gerar o PDF da atividade: {}", error))?;
 
     let _ = fs::remove_file(&temp_html);
 
@@ -1029,7 +1029,7 @@ fn detect_browser_path() -> Option<PathBuf> {
 
 fn local_app_assets_dir() -> Result<PathBuf, String> {
     let local_app_data = std::env::var_os("LOCALAPPDATA")
-        .ok_or_else(|| "Nao foi possivel localizar o AppData local deste usuario.".to_string())?;
+        .ok_or_else(|| "Não foi possível localizar o AppData local deste usuário.".to_string())?;
     Ok(PathBuf::from(local_app_data).join("lumen_studio").join("assets"))
 }
 
@@ -1054,13 +1054,13 @@ fn read_asset_settings_file(app_data_dir: &Path) -> AssetSettingsFile {
 fn write_asset_settings_file(app_data_dir: &Path, settings: &AssetSettingsFile) -> Result<(), String> {
     let parent_dir = app_data_dir.parent().unwrap_or(app_data_dir);
     fs::create_dir_all(parent_dir)
-        .map_err(|error| format!("Nao foi possivel preparar a pasta de configuracoes: {}", error))?;
+        .map_err(|error| format!("Não foi possível preparar a pasta de configurações: {}", error))?;
     fs::write(
         asset_settings_file_path(app_data_dir),
         serde_json::to_string_pretty(settings)
-            .map_err(|error| format!("Nao foi possivel serializar as configuracoes: {}", error))?,
+            .map_err(|error| format!("Não foi possível serializar as configurações: {}", error))?,
     )
-    .map_err(|error| format!("Nao foi possivel salvar as configuracoes de assets: {}", error))
+    .map_err(|error| format!("Não foi possível salvar as configurações de assets: {}", error))
 }
 
 fn resolve_asset_settings() -> Result<ResolvedAssetSettings, String> {
@@ -1204,7 +1204,7 @@ fn asset_data_url(path: Option<&Path>) -> Result<Option<String>, String> {
         return Ok(None);
     };
     let bytes = fs::read(path)
-        .map_err(|error| format!("Nao foi possivel ler o asset {}: {}", path.display(), error))?;
+        .map_err(|error| format!("Não foi possível ler o asset {}: {}", path.display(), error))?;
     let mime = match path.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
@@ -1257,11 +1257,11 @@ fn next_content_number(dir: &Path, prefix: &str) -> usize {
 }
 
 fn template_context() -> &'static str {
-    "# Disciplina Modelo\n\n## Proposito\n\nEsta disciplina foi gerada para demonstrar o fluxo completo do Lumen Studio com arquivos reais, uma aula Marp e uma atividade em Markdown.\n\n## O que voce encontra aqui\n\n- uma aula com capa, topicos, tabela, imagem e notas do apresentador\n- uma atividade com marcacao, tabela, imagem, campos de preenchimento e questoes discursivas\n- estrutura completa de disciplina para servir como ponto de partida\n"
+    "# Disciplina Modelo\n\n## Propósito\n\nEsta disciplina foi gerada para demonstrar o fluxo completo do Lumen Studio com arquivos reais, uma aula Marp e uma atividade em Markdown.\n\n## O que você encontra aqui\n\n- uma aula com capa, tópicos, tabela, imagem e notas do apresentador\n- uma atividade com marcação, tabela, imagem, campos de preenchimento e questões discursivas\n- estrutura completa de disciplina para servir como ponto de partida\n"
 }
 
 fn template_plan() -> &'static str {
-    "# Plano Geral — Disciplina Modelo\n\n## Objetivo geral\n\nApresentar uma estrutura de exemplo que ajude o professor a entender como organizar conteudo, aula e atividade dentro do Lumen Studio.\n\n## Sequencia sugerida\n\n1. Aula 01 — Visao geral do Studio\n2. Atividade 01 — Mapeamento de fluxo\n\n## Resultados esperados\n\n- Entender a estrutura da disciplina\n- Reconhecer os tipos de conteudo que o editor suporta\n- Usar a disciplina como base para criar novas materias\n"
+    "# Plano Geral — Disciplina Modelo\n\n## Objetivo geral\n\nApresentar uma estrutura de exemplo que ajude o professor a entender como organizar conteúdo, aula e atividade dentro do Lumen Studio.\n\n## Sequência sugerida\n\n1. Aula 01 — Visão geral do Studio\n2. Atividade 01 — Mapeamento de fluxo\n\n## Resultados esperados\n\n- Entender a estrutura da disciplina\n- Reconhecer os tipos de conteúdo que o editor suporta\n- Usar a disciplina como base para criar novas matérias\n"
 }
 
 fn template_lesson() -> &'static str {
@@ -1270,14 +1270,14 @@ fn template_lesson() -> &'static str {
 
 fn template_lesson_draft(number: usize, theme: &str) -> String {
     format!(
-        "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula {0:02} - {1}\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {{\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}}\nfooter img {{\n  height: 50px;\n  width: auto;\n}}\n\nsection.capa {{\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}}\nsection.capa h1 {{\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}}\nsection.capa h2 {{\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}}\nsection.capa p {{\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}}\n\nsection:not(.capa) h2 {{\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}}\n\nsection:not(.capa) strong {{\n  color: #1a5fa8;\n}}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula {0:02} — {1}\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Topico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Topico 2\n   Registre a linha de fala principal para manter a sequencia da apresentacao.\n\n3. Topico 3\n   Aponte exemplos, perguntas para a turma ou analogias uteis.\n-->\n\n---\n\n## Exemplo ou demonstracao\n\n- Inserir exemplo pratico\n\n---\n\n## Atividade\n\n- Inserir exercicio, desafio ou estudo de caso\n\n---\n\n## Fechamento\n\n- Retomar os principais aprendizados\n- Registrar proximo assunto\n",
+        "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula {0:02} - {1}\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {{\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}}\nfooter img {{\n  height: 50px;\n  width: auto;\n}}\n\nsection.capa {{\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}}\nsection.capa h1 {{\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}}\nsection.capa h2 {{\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}}\nsection.capa p {{\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}}\n\nsection:not(.capa) h2 {{\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}}\n\nsection:not(.capa) strong {{\n  color: #1a5fa8;\n}}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula {0:02} — {1}\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Tópicos da aula\n\n- Tópico 1\n- Tópico 2\n- Tópico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Tópico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Tópico 2\n   Registre a linha de fala principal para manter a sequência da apresentação.\n\n3. Tópico 3\n   Aponte exemplos, perguntas para a turma ou analogias úteis.\n-->\n\n---\n\n## Exemplo ou demonstração\n\n- Inserir exemplo prático\n\n---\n\n## Atividade\n\n- Inserir exercício, desafio ou estudo de caso\n\n---\n\n## Fechamento\n\n- Retomar os principais aprendizados\n- Registrar próximo assunto\n",
         number,
         theme
     )
 }
 
 fn template_activity() -> &'static str {
-    "---\ntitle: Atividade 01 - Mapeamento de fluxo e leitura de interface\nsubtitle: Disciplina Modelo\n---\n\n<style>\n.fill-box {\n  display: block;\n  width: 100%;\n  min-height: 120px;\n  border: 1px solid #cbd5e1;\n  border-radius: 12px;\n  margin-top: 12px;\n}\n.fill-box.small {\n  min-height: 64px;\n}\n.answer-line {\n  display: block;\n  border-bottom: 1px solid #94a3b8;\n  height: 24px;\n  margin-top: 12px;\n}\n.tip {\n  padding: 10px 12px;\n  border-left: 4px solid #2563eb;\n  background: #eff6ff;\n  margin: 12px 0;\n}\n</style>\n\n# Atividade 01 - Mapeamento de fluxo e leitura de interface\n\n## Objetivos\n\n- Ler e interpretar estruturas de conteudo\n- Relacionar fluxo, interface e instrucao\n- Registrar respostas discursivas, objetivas e visuais\n\n## Instrucoes\n\n- Leia todas as questoes antes de responder.\n- Marque as alternativas com atencao.\n- Quando solicitado, use frases curtas e objetivas.\n\n<div class=\"tip\">\nDica: esta atividade foi desenhada para demonstrar varios formatos uteis no seu material.\n</div>\n\n## 1. Marque as estruturas que normalmente fazem parte de uma disciplina\n\n- [ ] `contexto.md`\n- [ ] `plano_geral.md`\n- [ ] `aulas/`\n- [ ] `atividades/`\n- [ ] `aprovacoes_final.zip`\n\n## 2. Complete as frases\n\nA pasta `aulas/` normalmente contem arquivos de __________________.\n\n<span class=\"answer-line\"></span>\n\nA pasta `atividades/` normalmente contem arquivos de __________________.\n\n<span class=\"answer-line\"></span>\n\n## 3. Observe a imagem e responda\n\n![w:520](../assets/exemplo_interface.svg)\n\nQual informacao da interface ajuda o professor a entender em que etapa do trabalho ele esta?\n\n<span class=\"fill-box small\"></span>\n\n## 4. Relacione cada item ao seu papel\n\n| Item | Papel |\n|---|---|\n| Aula | ______________________________ |\n| Atividade | ______________________________ |\n| Referencias | ______________________________ |\n\n## 5. Analise o fluxo abaixo\n\n![w:520](../assets/exemplo_fluxo.svg)\n\nAssinale a alternativa mais adequada.\n\n- ( ) O fluxo representa somente exportacao de PDF.\n- ( ) O fluxo mostra a passagem entre escrever, revisar e publicar.\n- ( ) O fluxo serve apenas para design visual.\n- ( ) O fluxo nao se aplica ao trabalho docente.\n\n## 6. Resposta curta\n\nEm duas ou tres linhas, explique por que separar aula e atividade ajuda na organizacao do planejamento.\n\n<span class=\"fill-box\"></span>\n\n## 7. Planejamento rapido\n\nPreencha a tabela com uma ideia inicial para sua propria disciplina.\n\n| Elemento | Sua ideia |\n|---|---|\n| Nome da disciplina | ______________________________ |\n| Tema da primeira aula | ______________________________ |\n| Tema da primeira atividade | ______________________________ |\n| Recurso visual que quer usar | ______________________________ |\n"
+    "---\ntitle: Atividade 01 - Mapeamento de fluxo e leitura de interface\nsubtitle: Disciplina Modelo\n---\n\n<style>\n.fill-box {\n  display: block;\n  width: 100%;\n  min-height: 120px;\n  border: 1px solid #cbd5e1;\n  border-radius: 12px;\n  margin-top: 12px;\n}\n.fill-box.small {\n  min-height: 64px;\n}\n.answer-line {\n  display: block;\n  border-bottom: 1px solid #94a3b8;\n  height: 24px;\n  margin-top: 12px;\n}\n.tip {\n  padding: 10px 12px;\n  border-left: 4px solid #2563eb;\n  background: #eff6ff;\n  margin: 12px 0;\n}\n</style>\n\n# Atividade 01 - Mapeamento de fluxo e leitura de interface\n\n## Objetivos\n\n- Ler e interpretar estruturas de conteúdo\n- Relacionar fluxo, interface e instrução\n- Registrar respostas discursivas, objetivas e visuais\n\n## Instruções\n\n- Leia todas as questões antes de responder.\n- Marque as alternativas com atenção.\n- Quando solicitado, use frases curtas e objetivas.\n\n<div class=\"tip\">\nDica: esta atividade foi desenhada para demonstrar vários formatos úteis no seu material.\n</div>\n\n## 1. Marque as estruturas que normalmente fazem parte de uma disciplina\n\n- [ ] `contexto.md`\n- [ ] `plano_geral.md`\n- [ ] `aulas/`\n- [ ] `atividades/`\n- [ ] `aprovacoes_final.zip`\n\n## 2. Complete as frases\n\nA pasta `aulas/` normalmente contém arquivos de __________________.\n\n<span class=\"answer-line\"></span>\n\nA pasta `atividades/` normalmente contém arquivos de __________________.\n\n<span class=\"answer-line\"></span>\n\n## 3. Observe a imagem e responda\n\n![w:520](../assets/exemplo_interface.svg)\n\nQual informação da interface ajuda o professor a entender em que etapa do trabalho ele está?\n\n<span class=\"fill-box small\"></span>\n\n## 4. Relacione cada item ao seu papel\n\n| Item | Papel |\n|---|---|\n| Aula | ______________________________ |\n| Atividade | ______________________________ |\n| Referências | ______________________________ |\n\n## 5. Analise o fluxo abaixo\n\n![w:520](../assets/exemplo_fluxo.svg)\n\nAssinale a alternativa mais adequada.\n\n- ( ) O fluxo representa somente exportação de PDF.\n- ( ) O fluxo mostra a passagem entre escrever, revisar e publicar.\n- ( ) O fluxo serve apenas para design visual.\n- ( ) O fluxo não se aplica ao trabalho docente.\n\n## 6. Resposta curta\n\nEm duas ou três linhas, explique por que separar aula e atividade ajuda na organização do planejamento.\n\n<span class=\"fill-box\"></span>\n\n## 7. Planejamento rápido\n\nPreencha a tabela com uma ideia inicial para sua própria disciplina.\n\n| Elemento | Sua ideia |\n|---|---|\n| Nome da disciplina | ______________________________ |\n| Tema da primeira aula | ______________________________ |\n| Tema da primeira atividade | ______________________________ |\n| Recurso visual que quer usar | ______________________________ |\n"
 }
 
 fn template_activity_draft(number: usize, theme: &str) -> String {
@@ -1592,12 +1592,12 @@ fs.writeFileSync(outputPath, html, 'utf8');
 fn render_marp_html(workspace_path: String, content: String) -> Result<String, String> {
     let root = resolve_workspace_root(&workspace_path)?;
     let tool_root = resolve_generation_tool_root(&root)
-        .map_err(|_| "Ferramentas de geracao nao encontradas. Instale as dependencias no workspace.".to_string())?;
+        .map_err(|_| "Ferramentas de geração não encontradas. Instale as dependências no workspace.".to_string())?;
     let assets = resolve_asset_settings()?;
 
     let marp_bin = tool_root.join("node_modules").join(".bin").join("marp.cmd");
     if !marp_bin.is_file() {
-        return Err("Marp CLI nao encontrado em node_modules/.bin/marp.cmd.".to_string());
+        return Err("Marp CLI não encontrado em node_modules/.bin/marp.cmd.".to_string());
     }
 
     let temp_dir = std::env::temp_dir();
@@ -1611,7 +1611,7 @@ fn render_marp_html(workspace_path: String, content: String) -> Result<String, S
 
     let prepared_content = prepare_lesson_markdown_for_render(&content, &assets)?;
     fs::write(&temp_input, &prepared_content)
-        .map_err(|e| format!("Falha ao criar arquivo temporario: {}", e))?;
+        .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
 
     let marp_bin_str = marp_bin.to_string_lossy().to_string();
     let input_str = temp_input.to_string_lossy().to_string();
@@ -1626,7 +1626,7 @@ fn render_marp_html(workspace_path: String, content: String) -> Result<String, S
 
     if !status.success() || !temp_output.is_file() {
         let _ = fs::remove_file(&temp_output);
-        return Err("Falha ao renderizar os slides. Verifique se o Marp CLI esta instalado corretamente.".to_string());
+        return Err("Falha ao renderizar os slides. Verifique se o Marp CLI está instalado corretamente.".to_string());
     }
 
     let html = fs::read_to_string(&temp_output)
@@ -1641,11 +1641,11 @@ fn render_marp_html(workspace_path: String, content: String) -> Result<String, S
 fn render_activity_html(workspace_path: String, content: String) -> Result<String, String> {
     let root = resolve_workspace_root(&workspace_path)?;
     let tool_root = resolve_generation_tool_root(&root)
-        .map_err(|_| "Ferramentas de geracao nao encontradas. Instale as dependencias no workspace.".to_string())?;
+        .map_err(|_| "Ferramentas de geração não encontradas. Instale as dependências no workspace.".to_string())?;
     let markdown_it_module = tool_root.join("node_modules").join("markdown-it");
 
     if !markdown_it_module.exists() {
-        return Err("markdown-it nao encontrado em node_modules.".to_string());
+        return Err("markdown-it não encontrado em node_modules.".to_string());
     }
     let assets = resolve_asset_settings()?;
     let logo_path = assets
@@ -1664,7 +1664,7 @@ fn render_activity_html(workspace_path: String, content: String) -> Result<Strin
     let temp_output = temp_dir.join(format!("lumen_activity_preview_{}.html", timestamp));
 
     fs::write(&temp_input, &content)
-        .map_err(|e| format!("Falha ao criar arquivo temporario: {}", e))?;
+        .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
 
     let status = Command::new("node")
         .arg("-e")
@@ -1721,7 +1721,7 @@ fn set_color_theme(theme_id: String) -> Result<AssetSettingsState, String> {
     let app_data_dir = local_app_assets_dir()?;
     let normalized = theme_id.trim().to_lowercase();
     if COLOR_THEME_PRESETS.iter().all(|preset| preset.id != normalized) {
-        return Err("Tema de cor invalido.".to_string());
+        return Err("Tema de cor inválido.".to_string());
     }
 
     let mut settings = read_asset_settings_file(&app_data_dir);
@@ -1734,25 +1734,25 @@ fn set_color_theme(theme_id: String) -> Result<AssetSettingsState, String> {
 fn set_asset_file(asset_kind: String, source_path: String) -> Result<AssetSettingsState, String> {
     let source = PathBuf::from(source_path.trim());
     if !source.is_file() {
-        return Err("Selecione um arquivo valido.".to_string());
+        return Err("Selecione um arquivo válido.".to_string());
     }
 
     let app_data_dir = local_app_assets_dir()?;
     fs::create_dir_all(&app_data_dir)
-        .map_err(|error| format!("Nao foi possivel preparar a pasta de assets: {}", error))?;
+        .map_err(|error| format!("Não foi possível preparar a pasta de assets: {}", error))?;
 
     let extension = source
         .extension()
         .and_then(|value| value.to_str())
         .map(|value| value.to_ascii_lowercase())
         .filter(|value| ["png", "jpg", "jpeg", "webp", "svg"].contains(&value.as_str()))
-        .ok_or_else(|| "Use um arquivo de imagem compativel: png, jpg, jpeg, webp ou svg.".to_string())?;
+        .ok_or_else(|| "Use um arquivo de imagem compatível: png, jpg, jpeg, webp ou svg.".to_string())?;
 
     let mut settings = read_asset_settings_file(&app_data_dir);
     let target_file_name = match asset_kind.as_str() {
         "logo" => format!("logo.{}", extension),
         "background" => format!("background.{}", extension),
-        _ => return Err("Tipo de asset invalido.".to_string()),
+        _ => return Err("Tipo de asset inválido.".to_string()),
     };
 
     if asset_kind == "logo" {
@@ -1768,7 +1768,7 @@ fn set_asset_file(asset_kind: String, source_path: String) -> Result<AssetSettin
     }
 
     fs::copy(&source, app_data_dir.join(&target_file_name))
-        .map_err(|error| format!("Nao foi possivel copiar o arquivo selecionado: {}", error))?;
+        .map_err(|error| format!("Não foi possível copiar o arquivo selecionado: {}", error))?;
     write_asset_settings_file(&app_data_dir, &settings)?;
     get_asset_settings()
 }
@@ -1789,7 +1789,7 @@ fn clear_asset_file(asset_kind: String) -> Result<AssetSettingsState, String> {
                 let _ = fs::remove_file(app_data_dir.join(previous));
             }
         }
-        _ => return Err("Tipo de asset invalido.".to_string()),
+        _ => return Err("Tipo de asset inválido.".to_string()),
     }
 
     write_asset_settings_file(&app_data_dir, &settings)?;

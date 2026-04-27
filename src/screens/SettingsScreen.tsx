@@ -78,17 +78,17 @@ export function SettingsScreen({
     <section className="subject-detail-shell" aria-labelledby="settings-title">
       <div className="subject-detail-header">
         <div className="hero-copy">
-          <p className="hero-kicker">Configuracoes</p>
-          <h1 id="settings-title">Defina o visual padrao dos materiais.</h1>
+          <p className="hero-kicker">Configurações</p>
+          <h1 id="settings-title">Defina o visual padrão dos materiais.</h1>
           <p className="hero-body">
             Os slides e atividades usam primeiro o que estiver salvo no aplicativo.
-            Se nao houver nada definido, o sistema tenta um fallback global.
+            Se não houver nada definido, o sistema tenta um fallback global.
           </p>
         </div>
 
         <aside className="workspace-panel subject-detail-panel">
           <div className="workspace-heading">
-            <p className="preview-label">Localizacao dos assets</p>
+            <p className="preview-label">Localização dos assets</p>
           </div>
           <p className="workspace-path">
             {assetSettings?.appDataDir ?? "Carregando pasta local..."}
@@ -107,14 +107,14 @@ export function SettingsScreen({
       {loading ? (
         <div className="feedback-panel">
           <p className="preview-label">carregando</p>
-          <h2 className="feedback-title">Lendo configuracoes visuais.</h2>
+          <h2 className="feedback-title">Lendo configurações visuais.</h2>
         </div>
       ) : null}
 
       {error ? (
         <div className="feedback-panel is-error">
           <p className="preview-label">erro</p>
-          <h2 className="feedback-title">Nao foi possivel abrir as configuracoes.</h2>
+          <h2 className="feedback-title">Não foi possível abrir as configurações.</h2>
           <p className="feedback-copy">{error}</p>
         </div>
       ) : null}
@@ -132,7 +132,7 @@ export function SettingsScreen({
           />
           <AssetCard
             title="Background"
-            copy="Usado como fundo padrao dos slides."
+            copy="Usado como fundo padrão dos slides."
             value={assetSettings?.backgroundPath ?? null}
             source={assetSettings?.backgroundSource ?? "none"}
             onSelect={onSelectBackground}
@@ -143,7 +143,7 @@ export function SettingsScreen({
             <p className="preview-label">Cores</p>
             <h3>Paleta editorial</h3>
             <p className="section-copy settings-asset-copy">
-              Define a cor principal dos titulos, linhas e detalhes dos slides e atividades.
+              Define a cor principal dos títulos, linhas e detalhes dos slides e atividades.
             </p>
             <div className="settings-theme-grid">
               {colorThemes.map((theme) => (

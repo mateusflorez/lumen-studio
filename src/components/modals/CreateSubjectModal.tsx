@@ -42,7 +42,7 @@ export function CreateSubjectModal({
       {step === 1 ? (
         <div className="modal-stack">
           <p className="modal-copy">
-            Escolha o nome da disciplina. A pasta sera criada automaticamente no seu workspace.
+            Escolha o nome da disciplina. A pasta será criada automaticamente no seu workspace.
           </p>
           <label className="modal-field">
             <span className="preview-label">Nome da disciplina</span>
@@ -72,7 +72,7 @@ export function CreateSubjectModal({
       ) : (
         <div className="modal-stack">
           <p className="modal-copy">
-            Escolha a cor da disciplina. Ela sera usada no card da home.
+            Escolha a cor da disciplina. Ela será usada no card da home.
           </p>
           <div className="color-grid" role="radiogroup" aria-label="Escolher cor da disciplina">
             {colorOptions.map((opt) => (
@@ -89,7 +89,7 @@ export function CreateSubjectModal({
           <div className="modal-preview">
             <span className="subject-swatch" style={{ backgroundColor: color }} aria-hidden="true" />
             <div>
-              <p className="preview-label">Previa</p>
+              <p className="preview-label">Prévia</p>
               <strong>{name.trim() || "Nova disciplina"}</strong>
             </div>
           </div>

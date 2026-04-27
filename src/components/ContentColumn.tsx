@@ -14,6 +14,7 @@ export function ContentColumn({
   onGenerate,
   onOpenOutput,
   onDelete,
+  onPreview,
 }: {
   title: string;
   subtitle: string;
@@ -27,6 +28,7 @@ export function ContentColumn({
   onGenerate: (item: ContentItem) => void;
   onOpenOutput: (item: ContentItem) => void;
   onDelete: (item: ContentItem) => void;
+  onPreview: (item: ContentItem) => void;
 }) {
   return (
     <section className="content-column">
@@ -68,6 +70,13 @@ export function ContentColumn({
               </button>
               <div className="content-card-footer">
                 <div className="content-card-footer-actions">
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => onPreview(item)}
+                  >
+                    Preview
+                  </button>
                   <button
                     type="button"
                     className="ghost-action"

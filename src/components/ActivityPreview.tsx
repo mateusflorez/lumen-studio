@@ -28,7 +28,7 @@ export function ActivityPreview({
         setError(null);
       } catch (cause) {
         if (cancelled) return;
-        setError(typeof cause === "string" ? cause : "Falha ao renderizar preview.");
+        setError(typeof cause === "string" ? cause : "Falha ao renderizar prévia.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -43,7 +43,7 @@ export function ActivityPreview({
   return (
     <div className="marp-preview marp-preview--activity">
       <div className="marp-preview-header">
-        <p className="preview-label">Preview da atividade</p>
+        <p className="preview-label">Prévia da atividade</p>
         {loading && (
           <span className="status-chip status-chip-saving">● renderizando</span>
         )}
@@ -58,12 +58,12 @@ export function ActivityPreview({
             srcDoc={html}
             sandbox="allow-scripts"
             className="activity-preview-frame"
-            title="Preview A4 da atividade"
+            title="Prévia A4 da atividade"
           />
         </div>
       ) : (
         <div className="marp-preview-body">
-          <span>Preparando renderizacao...</span>
+          <span>Preparando renderização...</span>
         </div>
       )}
     </div>
