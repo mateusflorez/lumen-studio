@@ -205,7 +205,7 @@ function App() {
           <p className="eyebrow">SENAI Studio</p>
           <div className="header-meta">
             <span className={`status-chip ${hasWorkspace ? "status-chip-ok" : ""}`}>
-              {hasWorkspace ? "◉ workspace conectado" : "◎ selecione um workspace"}
+              {hasWorkspace ? "◉ pasta conectada" : "◎ selecione uma pasta"}
             </span>
             <span className="status-chip">Fase 1</span>
           </div>
@@ -215,12 +215,11 @@ function App() {
           <>
             <section className="hero-grid">
               <div className="hero-copy">
-                <p className="hero-kicker">Workspace didatico</p>
-                <h1>Escolha onde o planejamento esta salvo e troque isso quando quiser.</h1>
+                <p className="hero-kicker">Seu planejamento</p>
+                <h1>Escolha a pasta do seu material e continue de onde parou.</h1>
                 <p className="hero-body">
-                  O app nao depende mais de um caminho fixo da sua maquina. Voce seleciona a
-                  pasta do planejamento, o caminho fica salvo localmente e pode ser alterado
-                  depois por botao.
+                  Selecione a pasta onde suas disciplinas estao organizadas. O aplicativo
+                  lembra essa escolha e voce pode trocar quando quiser.
                 </p>
               </div>
 
@@ -265,11 +264,11 @@ function App() {
             <section className="subjects-section" aria-labelledby="subjects-title">
               <div className="section-heading">
                 <div>
-                  <p className="preview-label">Home</p>
-                  <h2 id="subjects-title">Grid de disciplinas</h2>
+                  <p className="preview-label">Disciplinas</p>
+                  <h2 id="subjects-title">Escolha uma disciplina para abrir</h2>
                 </div>
                 <p className="section-copy">
-                  Cards editoriais com nome, cor, estrutura base e volume de conteudo.
+                  Veja rapidamente suas disciplinas e entre na que deseja editar.
                 </p>
               </div>
 
@@ -293,7 +292,9 @@ function App() {
                           style={{ backgroundColor: subject.color }}
                           aria-hidden="true"
                         />
-                        <span className="status-chip">{subject.slug}</span>
+                        <span className="status-chip">
+                          <span className="subject-card-slug">{subject.slug}</span>
+                        </span>
                       </div>
 
                       <div className="subject-card-body">
@@ -337,14 +338,14 @@ function App() {
                   {selectedSubject?.displayName ?? humanizeSlug(selectedSubjectSlug ?? "")}
                 </h1>
                 <p className="hero-body">
-                  Aulas e atividades da disciplina, com status derivados dos mesmos outputs do
-                  TUI: `slides/*.pptx` e `atividades/pdfs/*.pdf`.
+                  Acompanhe as aulas e atividades da disciplina e veja o que ja esta pronto
+                  ou precisa ser atualizado.
                 </p>
               </div>
 
               <aside className="workspace-panel subject-detail-panel">
                 <div className="workspace-heading">
-                  <p className="preview-label">Workspace</p>
+                  <p className="preview-label">Pasta atual</p>
                   <button
                     type="button"
                     className="ghost-action"
@@ -375,13 +376,13 @@ function App() {
               <div className="subject-detail-grid">
                 <ContentColumn
                   title="Aulas"
-                  subtitle="Status de slides"
+                  subtitle="Aulas da disciplina"
                   emptyMessage="Nenhuma aula encontrada."
                   items={selectedSubject.lessons}
                 />
                 <ContentColumn
                   title="Atividades"
-                  subtitle="Status de PDFs"
+                  subtitle="Atividades da disciplina"
                   emptyMessage="Nenhuma atividade encontrada."
                   items={selectedSubject.activities}
                 />
@@ -444,11 +445,11 @@ function EmptyWorkspaceState({
 }) {
   return (
     <div className="feedback-panel" role="status">
-      <p className="preview-label">workspace</p>
-      <p className="feedback-title">Selecione a pasta onde o planejamento esta salvo.</p>
+      <p className="preview-label">Primeiro passo</p>
+      <p className="feedback-title">Selecione a pasta onde seu material esta salvo.</p>
       <p className="feedback-copy">
-        Pode ser uma pasta nova ou uma pasta existente. Assim que voce escolher, o app
-        salva esse caminho localmente e usa esse workspace nas proximas aberturas.
+        Pode ser uma pasta existente ou uma nova pasta para organizar seu planejamento.
+        Depois disso, o aplicativo lembra essa escolha nas proximas aberturas.
       </p>
       <button type="button" className="primary-action" onClick={() => void onChooseWorkspace()}>
         Selecionar pasta
@@ -497,7 +498,7 @@ function LoadingState() {
   return (
     <div className="feedback-panel" role="status">
       <p className="preview-label">carregando</p>
-      <p className="feedback-title">Lendo arquivos do workspace...</p>
+      <p className="feedback-title">Carregando seu material...</p>
     </div>
   );
 }
@@ -506,7 +507,7 @@ function ErrorState({ message }: { message: string }) {
   return (
     <div className="feedback-panel is-error" role="alert">
       <p className="preview-label">erro</p>
-      <p className="feedback-title">Nao foi possivel carregar esta tela.</p>
+      <p className="feedback-title">Nao foi possivel abrir esta tela.</p>
       <p className="feedback-copy">{message}</p>
     </div>
   );

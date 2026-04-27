@@ -243,6 +243,7 @@
 }
 
 .workspace-stat {
+  min-width: 0;
   padding: 1rem;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.03);
@@ -260,8 +261,11 @@
   margin-top: 0.35rem;
   color: var(--text-secondary);
   font-size: 0.8rem;
+  line-height: 1.35;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .subjects-section {
@@ -326,10 +330,28 @@
 }
 
 .subject-swatch {
+  flex: 0 0 auto;
   width: 2.2rem;
   height: 2.2rem;
   border-radius: 999px;
   box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.04);
+}
+
+.subject-card-top .status-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 14rem);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.subject-card-slug {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subject-card-body {
@@ -605,6 +627,10 @@
 
   .section-copy {
     text-align: left;
+  }
+
+  .workspace-stats {
+    grid-template-columns: 1fr;
   }
 }
 
