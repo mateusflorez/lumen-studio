@@ -13,6 +13,7 @@ export function SubjectDetailScreen({
   detailError,
   processingOutputPath,
   onChooseWorkspace,
+  onEditSubject,
   onSelectContent,
   onGoBack,
   onCreateLesson,
@@ -31,6 +32,7 @@ export function SubjectDetailScreen({
   detailError: string | null;
   processingOutputPath: string | null;
   onChooseWorkspace: () => Promise<void>;
+  onEditSubject: () => void;
   onSelectContent: (path: string) => void;
   onGoBack: () => void;
   onCreateLesson: () => void;
@@ -66,6 +68,13 @@ export function SubjectDetailScreen({
               disabled={changingWorkspace}
             >
               {changingWorkspace ? "abrindo..." : "alterar caminho"}
+            </button>
+            <button
+              type="button"
+              className="ghost-action"
+              onClick={onEditSubject}
+            >
+              configurar disciplina
             </button>
           </div>
           <p className="workspace-path">{workspacePath}</p>

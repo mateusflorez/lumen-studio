@@ -58,6 +58,7 @@ function App() {
   const [commandQuery, setCommandQuery] = useState("");
   const [creatingTemplateSubject, setCreatingTemplateSubject] = useState(false);
   const [createSubjectOpen, setCreateSubjectOpen] = useState(false);
+  const [editSubjectOpen, setEditSubjectOpen] = useState(false);
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
   const [createActivityOpen, setCreateActivityOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -713,6 +714,7 @@ function App() {
             detailError={detailError}
             processingOutputPath={processingOutputPath}
             onChooseWorkspace={handleChooseWorkspace}
+            onEditSubject={() => setEditSubjectOpen(true)}
             onSelectContent={setSelectedContentPath}
             onGoBack={() => setSelectedSubjectSlug(null)}
             onCreateLesson={() => setCreateLessonOpen(true)}
@@ -776,6 +778,33 @@ function App() {
               setCreateLessonOpen(false);
             } catch (cause) {
               setDetailError(describeError(cause, "Falha ao criar a aula."));
+            }
+          }}
+        />
+      ) : null}
+
+      {editSubjectOpen && selectedSubjectSlug && selectedSubject ? (
+        <CreateSubjectModal
+          title="Configurar disciplina"
+          submitLabel="Salvar disciplina"
+          initialName={selectedSubject.displayName}
+          initialColor={selectedSubject.color}
+          onClose={() => setEditSubjectOpen(false)}
+          onConfirm={async (name, color) => {
+            try {
+              await invoke("update_subject", {
+                workspacePath,
+                subjectSlug: selectedSubjectSlug,
+                name,
+                color,
+              });
+              await Promise.all([
+                refreshSubjects(workspacePath),
+                refreshSubjectDetail(workspacePath, selectedSubjectSlug),
+              ]);
+              setEditSubjectOpen(false);
+            } catch (cause) {
+              setDetailError(describeError(cause, "Falha ao atualizar a disciplina."));
             }
           }}
         />

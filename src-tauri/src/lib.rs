@@ -458,6 +458,36 @@ fn create_subject(
 }
 
 #[tauri::command]
+fn update_subject(
+    workspace_path: String,
+    subject_slug: String,
+    name: String,
+    color: String,
+) -> Result<(), String> {
+    let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    let trimmed_name = name.trim();
+    if trimmed_name.is_empty() {
+        return Err("Informe o nome da disciplina.".to_string());
+    }
+
+    if !is_hex_color(&color) {
+        return Err("Selecione uma cor válida.".to_string());
+    }
+
+    fs::write(
+        subject_path.join(".conf"),
+        format!(
+            r##"{{"nome":"{}","cor":"{}"}}"##,
+            escape_json(trimmed_name),
+            color
+        ),
+    )
+    .map_err(|error| format!("Não foi possível atualizar a disciplina: {}", error))?;
+
+    Ok(())
+}
+
+#[tauri::command]
 fn create_lesson(
     workspace_path: String,
     subject_slug: String,
@@ -1817,6 +1847,7 @@ pub fn run() {
             generate_content_output,
             open_content_output_folder,
             create_subject,
+            update_subject,
             create_template_subject,
             create_lesson,
             create_activity,

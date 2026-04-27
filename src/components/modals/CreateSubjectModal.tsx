@@ -11,15 +11,23 @@ const colorOptions = [
 ];
 
 export function CreateSubjectModal({
+  title = "Nova disciplina",
+  submitLabel = "Criar disciplina",
+  initialName = "",
+  initialColor = colorOptions[0],
   onClose,
   onConfirm,
 }: {
+  title?: string;
+  submitLabel?: string;
+  initialName?: string;
+  initialColor?: string;
   onClose: () => void;
   onConfirm: (name: string, color: string) => Promise<void>;
 }) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [name, setName] = useState("");
-  const [color, setColor] = useState(colorOptions[0]);
+  const [step, setStep] = useState<1 | 2>(initialName.trim() ? 2 : 1);
+  const [name, setName] = useState(initialName);
+  const [color, setColor] = useState(initialColor);
   const [creating, setCreating] = useState(false);
 
   function handleClose() {
@@ -38,7 +46,7 @@ export function CreateSubjectModal({
   }
 
   return (
-    <ModalFrame title="Nova disciplina" onClose={handleClose}>
+    <ModalFrame title={title} onClose={handleClose}>
       {step === 1 ? (
         <div className="modal-stack">
           <p className="modal-copy">
@@ -108,7 +116,7 @@ export function CreateSubjectModal({
               onClick={() => void handleConfirm()}
               disabled={creating}
             >
-              {creating ? "criando..." : "Criar disciplina"}
+              {creating ? "salvando..." : submitLabel}
             </button>
           </div>
         </div>
