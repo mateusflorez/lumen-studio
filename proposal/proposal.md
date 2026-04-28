@@ -259,7 +259,7 @@ A migração é incremental: o Studio começa lendo arquivos existentes no prime
 
 ### Fase 7 — Exportação e distribuição
 - [ ] Criar exportação completa da disciplina em `.zip` com slides, PDFs e arquivos-fonte
-- [ ] Criar empacotamento de distribuição para Windows com instalador pronto para uso em outros computadores
+- [x] Criar empacotamento de distribuição para Windows com instalador pronto para uso em outros computadores
   Estratégia recomendada para Windows:
   empacotar no instalador o runtime de geração usado pelo app, incluindo as dependências Node necessárias para Marp/HTML e um navegador Chromium embarcado para PDF, eliminando a exigência de Node, Chrome/Edge e setup manual na máquina final.
   Motivo:

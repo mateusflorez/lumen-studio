@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.tmp
+src-tauri/resources/windows-runtime/node
+src-tauri/resources/windows-runtime/chromium
+src-tauri/resources/windows-runtime/node_modules
+src-tauri/resources/windows-runtime/package-lock.json
+src-tauri/resources/windows-runtime/runtime-manifest.json
 
 # Editor directories and files
 .vscode/*

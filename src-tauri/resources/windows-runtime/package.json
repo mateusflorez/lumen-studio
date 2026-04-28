@@ -1,0 +1,10 @@
+{
+  "name": "lumen-studio-windows-runtime",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Runtime embarcado de geração para o Lumen Studio no Windows",
+  "dependencies": {
+    "@marp-team/marp-cli": "^4.2.3",
+    "markdown-it": "^14.1.0"
+  }
+}

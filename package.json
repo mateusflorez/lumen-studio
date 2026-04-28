@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "prepare:windows-runtime": "node scripts/prepare-windows-runtime.mjs",
+    "build:windows-installer": "npm run prepare:windows-runtime && npm run tauri build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

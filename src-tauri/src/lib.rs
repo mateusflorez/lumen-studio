@@ -106,6 +106,7 @@ struct GlobalSearchResult {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GenerationEnvironmentStatus {
+    runtime_source: String,
     tool_root: Option<String>,
     marp_available: bool,
     markdown_it_available: bool,
@@ -116,6 +117,16 @@ struct GenerationEnvironmentStatus {
     activity_ready: bool,
     lesson_message: String,
     activity_message: String,
+}
+
+#[derive(Debug, Clone)]
+struct GenerationRuntime {
+    source: &'static str,
+    root: PathBuf,
+    marp_entry: PathBuf,
+    markdown_it_module: PathBuf,
+    node_command: String,
+    browser_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -339,10 +350,11 @@ fn search_workspace_content(
 
 #[tauri::command]
 fn get_generation_environment_status(
+    app: tauri::AppHandle,
     workspace_path: String,
 ) -> Result<GenerationEnvironmentStatus, String> {
     let root = resolve_workspace_root(&workspace_path)?;
-    Ok(inspect_generation_environment(&root))
+    Ok(inspect_generation_environment(Some(&app), &root))
 }
 
 #[tauri::command]
@@ -702,14 +714,15 @@ fn reorder_content_item(
 
 #[tauri::command]
 async fn generate_content_output(
+    app: tauri::AppHandle,
     workspace_path: String,
     subject_slug: String,
     relative_path: String,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let root = resolve_workspace_root(&workspace_path)?;
-        let environment = inspect_generation_environment(&root);
-        let tool_root = resolve_generation_tool_root(&root)?;
+        let environment = inspect_generation_environment(Some(&app), &root);
+        let runtime = resolve_generation_runtime(Some(&app), &root)?;
         let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
         let content_path = resolve_content_path(&subject_path, &relative_path)?;
         let file_name = content_path
@@ -718,13 +731,13 @@ async fn generate_content_output(
             .ok_or_else(|| "Nome de arquivo inválido.".to_string())?;
 
         if relative_path.starts_with("aulas/") {
-            generate_lesson_output(&tool_root, &content_path, file_name)
+            generate_lesson_output(&runtime, &content_path, file_name)
                 .map_err(|error| format!("{}\n\n{}", error, environment.lesson_message))?;
             return Ok(());
         }
 
         if relative_path.starts_with("atividades/") {
-            generate_activity_output(&tool_root, &subject_path, &content_path, file_name)
+            generate_activity_output(&runtime, &subject_path, &content_path, file_name)
                 .map_err(|error| format!("{}\n\n{}", error, environment.activity_message))?;
             return Ok(());
         }
@@ -1525,54 +1538,79 @@ fn normalize_search_text(value: &str) -> String {
     normalized
 }
 
-fn inspect_generation_environment(workspace_root: &Path) -> GenerationEnvironmentStatus {
-    let tool_root = resolve_generation_tool_root(workspace_root).ok();
-    let marp_available = tool_root
+fn inspect_generation_environment(
+    app: Option<&tauri::AppHandle>,
+    workspace_root: &Path,
+) -> GenerationEnvironmentStatus {
+    let runtime = resolve_generation_runtime(app, workspace_root).ok();
+    let tool_root_label = runtime
         .as_ref()
-        .map(|root| root.join("node_modules").join(".bin").join("marp.cmd").is_file())
-        .unwrap_or(false);
-    let markdown_it_available = tool_root
+        .map(|runtime| runtime.root.to_string_lossy().to_string());
+    let runtime_source = runtime
         .as_ref()
-        .map(|root| root.join("node_modules").join("markdown-it").exists())
+        .map(|runtime| runtime.source.to_string())
+        .unwrap_or_else(|| "missing".to_string());
+    let marp_available = runtime
+        .as_ref()
+        .map(|runtime| runtime.marp_entry.is_file())
         .unwrap_or(false);
-    let node_available = Command::new("node")
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
+    let markdown_it_available = runtime
+        .as_ref()
+        .map(|runtime| runtime.markdown_it_module.exists())
         .unwrap_or(false);
-    let browser_path = detect_browser_path();
+    let node_available = runtime
+        .as_ref()
+        .map(|runtime| {
+            Command::new(&runtime.node_command)
+                .arg("--version")
+                .output()
+                .map(|output| output.status.success())
+                .unwrap_or(false)
+        })
+        .unwrap_or(false);
+    let browser_path = runtime.as_ref().and_then(|runtime| runtime.browser_path.clone());
     let browser_available = browser_path.is_some();
-    let lesson_ready = marp_available;
+    let lesson_ready = marp_available && node_available;
     let activity_ready = markdown_it_available && node_available && browser_available;
-    let tool_root_label = tool_root
-        .as_ref()
-        .map(|path| path.to_string_lossy().to_string());
     let browser_path_label = browser_path
         .as_ref()
         .map(|path| path.to_string_lossy().to_string());
 
-    let lesson_message = if lesson_ready {
-        format!(
-            "Slides prontos para gerar. Marp encontrado em {}.",
-            tool_root_label.as_deref().unwrap_or("node_modules detectado")
-        )
-    } else if tool_root_label.is_none() {
-        "Slides indisponíveis. Não encontrei node_modules com Marp e markdown-it no projeto base do SENAI. Instale as dependências do projeto com npm install.".to_string()
-    } else {
-        "Slides indisponíveis. O Marp CLI não foi encontrado em node_modules/.bin/marp.cmd. Rode npm install no projeto base do SENAI.".to_string()
+    let runtime_label = match runtime_source.as_str() {
+        "bundled" => "runtime embarcado no instalador",
+        "workspace" => "runtime do workspace",
+        _ => "runtime ausente",
     };
 
-    let activity_message = match (markdown_it_available, node_available, browser_available) {
-        (true, true, true) => format!(
+    let lesson_message = if lesson_ready {
+        format!(
+            "Slides prontos para gerar usando {}.",
+            runtime_label
+        )
+    } else if runtime_source == "bundled" {
+        "Slides indisponíveis. O runtime embarcado do Windows está incompleto. Rode `npm run prepare:windows-runtime` antes de gerar o instalador.".to_string()
+    } else if runtime_source == "workspace" {
+        "Slides indisponíveis. Não encontrei um runtime completo. No desenvolvimento, rode `npm install` no projeto base; para distribuição, rode `npm run prepare:windows-runtime`.".to_string()
+    } else {
+        "Slides indisponíveis. Nenhum runtime de geração foi encontrado. Prepare o runtime Windows ou instale as dependências do workspace.".to_string()
+    };
+
+    let activity_message = match (markdown_it_available, node_available, browser_available, runtime_source.as_str()) {
+        (true, true, true, "bundled") => "PDF pronto para gerar usando o Chromium embarcado no instalador.".to_string(),
+        (true, true, true, _) => format!(
             "PDF pronto para gerar. Navegador detectado em {}.",
             browser_path_label.as_deref().unwrap_or("navegador compatível")
         ),
-        (false, _, _) => "PDF indisponível. O pacote markdown-it não foi encontrado no projeto base do SENAI. Rode npm install.".to_string(),
-        (_, false, _) => "PDF indisponível. O comando node não está disponível neste ambiente. Instale o Node.js 20+ ou ajuste o PATH.".to_string(),
-        (_, _, false) => "PDF indisponível. Não encontrei Chrome ou Edge instalado neste computador.".to_string(),
+        (_, _, false, "bundled") => "PDF indisponível. O Chromium embarcado não foi encontrado no runtime Windows.".to_string(),
+        (false, _, _, "bundled") => "PDF indisponível. O pacote markdown-it não foi encontrado no runtime embarcado.".to_string(),
+        (_, false, _, "bundled") => "PDF indisponível. O node.exe embarcado não foi encontrado no runtime Windows.".to_string(),
+        (false, _, _, _) => "PDF indisponível. O pacote markdown-it não foi encontrado. Rode `npm install` no projeto base ou prepare o runtime Windows.".to_string(),
+        (_, false, _, _) => "PDF indisponível. O comando Node não está disponível neste ambiente.".to_string(),
+        (_, _, false, _) => "PDF indisponível. Não encontrei Chrome, Edge ou Chromium embarcado para gerar PDF.".to_string(),
     };
 
     GenerationEnvironmentStatus {
+        runtime_source,
         tool_root: tool_root_label,
         marp_available,
         markdown_it_available,
@@ -1749,7 +1787,7 @@ fn resolve_generation_tool_root(workspace_root: &Path) -> Result<PathBuf, String
     }
 
     for candidate in candidates {
-        let marp = candidate.join("node_modules").join(".bin").join("marp.cmd");
+        let marp = resolve_marp_cli_entry(&candidate);
         let markdown_it = candidate.join("node_modules").join("markdown-it");
 
         if marp.is_file() && markdown_it.exists() {
@@ -1760,14 +1798,95 @@ fn resolve_generation_tool_root(workspace_root: &Path) -> Result<PathBuf, String
     Err("Não encontrei as ferramentas de geração. Esperava encontrar node_modules com Marp e markdown-it no projeto base do SENAI.".to_string())
 }
 
+fn resolve_generation_runtime(
+    app: Option<&tauri::AppHandle>,
+    workspace_root: &Path,
+) -> Result<GenerationRuntime, String> {
+    if let Some(runtime) = resolve_bundled_generation_runtime(app) {
+        return Ok(runtime);
+    }
+
+    let tool_root = resolve_generation_tool_root(workspace_root)?;
+    let browser_path = detect_browser_path();
+
+    Ok(GenerationRuntime {
+        source: "workspace",
+        marp_entry: resolve_marp_cli_entry(&tool_root),
+        markdown_it_module: tool_root.join("node_modules").join("markdown-it"),
+        node_command: "node".to_string(),
+        browser_path,
+        root: tool_root,
+    })
+}
+
+fn resolve_bundled_generation_runtime(app: Option<&tauri::AppHandle>) -> Option<GenerationRuntime> {
+    let app = app?;
+    let resource_dir = app.path().resource_dir().ok()?;
+    let runtime_root = resource_dir.join("windows-runtime");
+    if !runtime_root.is_dir() {
+        return None;
+    }
+
+    let marp_entry = resolve_marp_cli_entry(&runtime_root);
+    let markdown_it_module = runtime_root.join("node_modules").join("markdown-it");
+    let node_path = find_file_named(&runtime_root.join("node"), "node.exe")?;
+    let browser_path = find_file_named(&runtime_root.join("chromium"), "chrome-headless-shell.exe")
+        .or_else(|| find_file_named(&runtime_root.join("chromium"), "chrome.exe"));
+
+    Some(GenerationRuntime {
+        source: "bundled",
+        root: runtime_root,
+        marp_entry,
+        markdown_it_module,
+        node_command: node_path.to_string_lossy().to_string(),
+        browser_path,
+    })
+}
+
+fn find_file_named(root: &Path, file_name: &str) -> Option<PathBuf> {
+    if !root.exists() {
+        return None;
+    }
+
+    let entries = fs::read_dir(root).ok()?;
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        if path.is_file()
+            && path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .is_some_and(|value| value.eq_ignore_ascii_case(file_name))
+        {
+            return Some(path);
+        }
+
+        if path.is_dir() {
+            if let Some(found) = find_file_named(&path, file_name) {
+                return Some(found);
+            }
+        }
+    }
+
+    None
+}
+
+fn resolve_marp_cli_entry(root: &Path) -> PathBuf {
+    let primary = root.join("node_modules").join("@marp-team").join("marp-cli").join("marp-cli.js");
+    if primary.is_file() {
+        return primary;
+    }
+
+    root.join("node_modules").join("@marp-team").join("marp-cli").join("bin").join("marp.js")
+}
+
 fn generate_lesson_output(
-    root: &Path,
+    runtime: &GenerationRuntime,
     content_path: &Path,
     file_name: &str,
 ) -> Result<(), String> {
-    let marp_bin = root.join("node_modules").join(".bin").join("marp.cmd");
-    if !marp_bin.is_file() {
-        return Err("Marp CLI não encontrado em node_modules/.bin/marp.cmd.".to_string());
+    let marp_entry = runtime.marp_entry.clone();
+    if !marp_entry.is_file() {
+        return Err("Marp CLI não encontrado no runtime configurado.".to_string());
     }
 
     let subject_path = content_path
@@ -1794,14 +1913,13 @@ fn generate_lesson_output(
     fs::write(&temp_input, prepared_content)
         .map_err(|error| format!("Não foi possível preparar a aula para exportação: {}", error))?;
 
-    let marp_bin_string = marp_bin.to_string_lossy().to_string();
+    let marp_entry_string = marp_entry.to_string_lossy().to_string();
     let output_file_string = output_file.to_string_lossy().to_string();
     let content_path_string = temp_input.to_string_lossy().to_string();
 
-    let status = Command::new("cmd")
+    let status = Command::new(&runtime.node_command)
         .args([
-            "/C",
-            marp_bin_string.as_str(),
+            marp_entry_string.as_str(),
             "--pptx",
             "--allow-local-files",
             "--output",
@@ -1821,18 +1939,21 @@ fn generate_lesson_output(
 }
 
 fn generate_activity_output(
-    root: &Path,
+    runtime: &GenerationRuntime,
     subject_path: &Path,
     content_path: &Path,
     file_name: &str,
 ) -> Result<(), String> {
-    let markdown_it_module = root.join("node_modules").join("markdown-it");
+    let markdown_it_module = runtime.markdown_it_module.clone();
     if !markdown_it_module.exists() {
-        return Err("markdown-it não encontrado em node_modules.".to_string());
+        return Err("markdown-it não encontrado no runtime configurado.".to_string());
     }
 
-    let browser_path = detect_browser_path()
-        .ok_or_else(|| "Nenhum Chrome ou Edge local foi encontrado para gerar PDF.".to_string())?;
+    let browser_path = runtime
+        .browser_path
+        .as_ref()
+        .cloned()
+        .ok_or_else(|| "Nenhum navegador compatível foi encontrado para gerar PDF.".to_string())?;
     let output_dir = subject_path.join("atividades").join("pdfs");
     fs::create_dir_all(&output_dir)
         .map_err(|error| format!("Não foi possível criar a pasta de PDFs: {}", error))?;
@@ -1852,7 +1973,7 @@ fn generate_activity_output(
     let temp_html_string = temp_html.to_string_lossy().to_string();
     let print_arg = format!("--print-to-pdf={}", output_file.to_string_lossy());
 
-    let render_status = Command::new("node")
+    let render_status = Command::new(&runtime.node_command)
         .arg("-e")
         .arg(ACTIVITY_HTML_RENDER_SCRIPT)
         .arg(markdown_it_string.as_str())
@@ -2140,12 +2261,12 @@ fn template_plan() -> &'static str {
 }
 
 fn template_lesson() -> &'static str {
-    "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula 01 - Visao geral do Lumen Studio\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}\nfooter img {\n  height: 50px;\n  width: auto;\n}\n\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}\nsection.capa h1 {\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}\nsection.capa h2 {\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}\nsection.capa p {\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}\n\nsection:not(.capa) h2 {\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}\n\nsection:not(.capa) strong {\n  color: #1a5fa8;\n}\n\nsection.compacto table {\n  font-size: 0.72em;\n  width: 60%;\n}\n\nsection.compacto p {\n  font-size: 0.85em;\n  margin-bottom: 6px;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Disciplina Modelo\n## Aula 01 — Visao geral do Lumen Studio\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Conhecer a estrutura de uma disciplina\n- Visualizar exemplos de escrita para slides\n- Usar imagens, tabelas e anotacoes do apresentador\n\n---\n\n## Topicos do encontro\n\n- Estrutura da pasta da disciplina\n- Diferenca entre aula e atividade\n- Recursos visuais no Markdown\n- Fluxo de edicao e revisao\n\n<!--\nAbrir a aula explicando que este arquivo foi pensado para mostrar o maximo de possibilidades com o minimo de friccao para o professor.\nCada topico pode virar uma aula real depois.\n-->\n\n---\n\n## Estrutura basica da disciplina\n\n| Pasta ou arquivo | Funcao |\n|---|---|\n| `contexto.md` | descreve a disciplina |\n| `plano_geral.md` | organiza a sequencia de conteudo |\n| `aulas/` | guarda os slides Marp |\n| `atividades/` | guarda as atividades |\n| `referencias/` | notas e apoio |\n\n---\n\n## Exemplo de imagem no slide\n\n![h:260](../assets/exemplo_fluxo.svg)\n\n<!--\nUsar este slide para mostrar que o professor pode incorporar diagramas simples no proprio material da disciplina.\n-->\n\n---\n\n## Exemplo de interface ou wireframe\n\n![h:250](../assets/exemplo_interface.svg)\n\n---\n\n<!-- _class: compacto -->\n## Comparando tipos de conteudo\n\n| Tipo | Melhor uso | Saida comum |\n|---|---|---|\n| Aula | explicar, demonstrar, apresentar | slide |\n| Atividade | praticar, revisar, avaliar | PDF |\n| Referencia | apoiar o preparo do docente | Markdown interno |\n\n---\n\n## Destaques para a escrita\n\n- Use titulos curtos e objetivos\n- Prefira um ponto principal por slide\n- Marque trechos importantes com destaque como **conceito-chave**\n- Deixe anotacoes para voce em comentarios HTML\n\n<!--\nReforcar que o aluno ve o slide renderizado, mas o docente pode manter seu roteiro dentro do proprio arquivo.\n-->\n\n---\n\n## Mini atividade em sala\n\n1. Abra o arquivo da atividade modelo\n2. Identifique os blocos de marcacao, tabela e imagem\n3. Edite uma pergunta com sua propria linguagem\n4. Salve e volte para comparar o resultado\n\n---\n\n## Fechamento\n\n- Esta disciplina foi criada para servir como base inicial\n- Voce pode duplicar a estrutura e adaptar para sua materia\n- O proximo passo natural e substituir os exemplos pelo seu conteudo real\n"
+    "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula 01 - Visao geral do Lumen Studio\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}\nfooter img {\n  height: 50px;\n  width: auto;\n}\n\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}\nsection.capa h1 {\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}\nsection.capa h2 {\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}\nsection.capa p {\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}\n\nsection:not(.capa) h2 {\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}\n\nsection:not(.capa) strong {\n  color: #1a5fa8;\n}\n\nsection.compacto table {\n  font-size: 0.72em;\n  width: 60%;\n}\n\nsection.compacto p {\n  font-size: 0.85em;\n  margin-bottom: 6px;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Disciplina Modelo\n## Aula 01 — Visao geral do Lumen Studio\n\nSeu Nome\nseuemail@instituicao.com.br\n\n---\n\n## Objetivos da aula\n\n- Conhecer a estrutura de uma disciplina\n- Visualizar exemplos de escrita para slides\n- Usar imagens, tabelas e anotacoes do apresentador\n\n---\n\n## Topicos do encontro\n\n- Estrutura da pasta da disciplina\n- Diferenca entre aula e atividade\n- Recursos visuais no Markdown\n- Fluxo de edicao e revisao\n\n<!--\nAbrir a aula explicando que este arquivo foi pensado para mostrar o maximo de possibilidades com o minimo de friccao para o professor.\nCada topico pode virar uma aula real depois.\n-->\n\n---\n\n## Estrutura basica da disciplina\n\n| Pasta ou arquivo | Funcao |\n|---|---|\n| `contexto.md` | descreve a disciplina |\n| `plano_geral.md` | organiza a sequencia de conteudo |\n| `aulas/` | guarda os slides Marp |\n| `atividades/` | guarda as atividades |\n| `referencias/` | notas e apoio |\n\n---\n\n## Exemplo de imagem no slide\n\n![h:260](../assets/exemplo_fluxo.svg)\n\n<!--\nUsar este slide para mostrar que o professor pode incorporar diagramas simples no proprio material da disciplina.\n-->\n\n---\n\n## Exemplo de interface ou wireframe\n\n![h:250](../assets/exemplo_interface.svg)\n\n---\n\n<!-- _class: compacto -->\n## Comparando tipos de conteudo\n\n| Tipo | Melhor uso | Saida comum |\n|---|---|---|\n| Aula | explicar, demonstrar, apresentar | slide |\n| Atividade | praticar, revisar, avaliar | PDF |\n| Referencia | apoiar o preparo do docente | Markdown interno |\n\n---\n\n## Destaques para a escrita\n\n- Use titulos curtos e objetivos\n- Prefira um ponto principal por slide\n- Marque trechos importantes com destaque como **conceito-chave**\n- Deixe anotacoes para voce em comentarios HTML\n\n<!--\nReforcar que o aluno ve o slide renderizado, mas o docente pode manter seu roteiro dentro do proprio arquivo.\n-->\n\n---\n\n## Mini atividade em sala\n\n1. Abra o arquivo da atividade modelo\n2. Identifique os blocos de marcacao, tabela e imagem\n3. Edite uma pergunta com sua propria linguagem\n4. Salve e volte para comparar o resultado\n\n---\n\n## Fechamento\n\n- Esta disciplina foi criada para servir como base inicial\n- Voce pode duplicar a estrutura e adaptar para sua materia\n- O proximo passo natural e substituir os exemplos pelo seu conteudo real\n"
 }
 
 fn template_lesson_draft(number: usize, theme: &str) -> String {
     format!(
-        "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula {0:02} - {1}\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {{\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}}\nfooter img {{\n  height: 50px;\n  width: auto;\n}}\n\nsection.capa {{\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}}\nsection.capa h1 {{\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}}\nsection.capa h2 {{\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}}\nsection.capa p {{\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}}\n\nsection:not(.capa) h2 {{\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}}\n\nsection:not(.capa) strong {{\n  color: #1a5fa8;\n}}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula {0:02} — {1}\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Tópicos da aula\n\n- Tópico 1\n- Tópico 2\n- Tópico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Tópico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Tópico 2\n   Registre a linha de fala principal para manter a sequência da apresentação.\n\n3. Tópico 3\n   Aponte exemplos, perguntas para a turma ou analogias úteis.\n-->\n\n---\n\n## Exemplo ou demonstração\n\n- Inserir exemplo prático\n\n---\n\n## Atividade\n\n- Inserir exercício, desafio ou estudo de caso\n\n---\n\n## Fechamento\n\n- Retomar os principais aprendizados\n- Registrar próximo assunto\n",
+        "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula {0:02} - {1}\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {{\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}}\nfooter img {{\n  height: 50px;\n  width: auto;\n}}\n\nsection.capa {{\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}}\nsection.capa h1 {{\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}}\nsection.capa h2 {{\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}}\nsection.capa p {{\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}}\n\nsection:not(.capa) h2 {{\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}}\n\nsection:not(.capa) strong {{\n  color: #1a5fa8;\n}}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula {0:02} — {1}\n\nSeu Nome\nseuemail@instituicao.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Tópicos da aula\n\n- Tópico 1\n- Tópico 2\n- Tópico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Tópico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Tópico 2\n   Registre a linha de fala principal para manter a sequência da apresentação.\n\n3. Tópico 3\n   Aponte exemplos, perguntas para a turma ou analogias úteis.\n-->\n\n---\n\n## Exemplo ou demonstração\n\n- Inserir exemplo prático\n\n---\n\n## Atividade\n\n- Inserir exercício, desafio ou estudo de caso\n\n---\n\n## Fechamento\n\n- Retomar os principais aprendizados\n- Registrar próximo assunto\n",
         number,
         theme
     )
@@ -2178,7 +2299,7 @@ fn empty_plan_template(subject_name: &str) -> String {
 }
 
 fn template_lesson_model() -> &'static str {
-    "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula XX - Titulo da aula\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}\nfooter img {\n  height: 50px;\n  width: auto;\n}\n\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}\nsection.capa h1 {\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}\nsection.capa h2 {\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}\nsection.capa p {\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}\n\nsection:not(.capa) h2 {\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}\n\nsection:not(.capa) strong {\n  color: #1a5fa8;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula XX — Titulo da aula\n\nMateus Flores Paz\nmateus.flores@fiemg.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Topico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Topico 2\n   Registre a linha de fala principal para manter a sequencia da apresentacao.\n\n3. Topico 3\n   Aponte exemplos, perguntas para a turma ou analogias uteis.\n-->\n"
+    "---\nmarp: true\ntheme: default\npaginate: true\nhtml: true\ntitle: Aula XX - Titulo da aula\nbackgroundImage: url('../shared/background.jpg')\nbackgroundSize: cover\nfooter: '![logo](../shared/senai_logo.png)'\n---\n\n<style>\nfooter {\n  position: absolute;\n  bottom: 14px;\n  left: 20px;\n  right: auto;\n  padding: 0;\n  border: none;\n  background: none;\n}\nfooter img {\n  height: 50px;\n  width: auto;\n}\n\nsection.capa {\n  text-align: center;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n}\nsection.capa h1 {\n  font-size: 2em;\n  font-weight: 800;\n  color: #1a5fa8;\n  background: none;\n  padding: 8px 0 4px;\n  margin-bottom: 0;\n  width: 100%;\n}\nsection.capa h2 {\n  font-size: 1.15em;\n  font-weight: 600;\n  color: #3a7fc1;\n  background: none;\n  padding: 4px 0 12px;\n  margin-top: 0;\n  width: 100%;\n  border-bottom: 2px solid #3a7fc1;\n}\nsection.capa p {\n  font-size: 0.85em;\n  color: #444;\n  margin-top: 24px;\n  line-height: 1.8;\n}\n\nsection:not(.capa) h2 {\n  color: #1a5fa8;\n  font-size: 1.35em;\n  border-bottom: 2px solid #3a7fc1;\n  padding-bottom: 6px;\n  margin-bottom: 18px;\n}\n\nsection:not(.capa) strong {\n  color: #1a5fa8;\n}\n</style>\n\n<!-- _class: capa -->\n<!-- _paginate: false -->\n<!-- _footer: '' -->\n\n![w:300px](../shared/senai_logo.png)\n\n# Nome da disciplina\n## Aula XX — Titulo da aula\n\nSeu Nome\nseuemail@instituicao.com.br\n\n---\n\n## Objetivos da aula\n\n- Objetivo 1\n- Objetivo 2\n- Objetivo 3\n\n---\n\n## Topicos da aula\n\n- Topico 1\n- Topico 2\n- Topico 3\n\n<!--\nROTEIRO DE FALA\n\n1. Topico 1\n   Oriente o que deve ser explicado, demonstrado ou contextualizado.\n\n2. Topico 2\n   Registre a linha de fala principal para manter a sequencia da apresentacao.\n\n3. Topico 3\n   Aponte exemplos, perguntas para a turma ou analogias uteis.\n-->\n"
 }
 
 fn template_plan_model() -> &'static str {
@@ -2464,15 +2585,15 @@ fs.writeFileSync(outputPath, html, 'utf8');
 "#;
 
 #[tauri::command]
-fn render_marp_html(workspace_path: String, content: String) -> Result<String, String> {
+fn render_marp_html(app: tauri::AppHandle, workspace_path: String, content: String) -> Result<String, String> {
     let root = resolve_workspace_root(&workspace_path)?;
-    let tool_root = resolve_generation_tool_root(&root)
-        .map_err(|_| "Ferramentas de geração não encontradas. Instale as dependências no workspace.".to_string())?;
+    let runtime = resolve_generation_runtime(Some(&app), &root)
+        .map_err(|_| "Ferramentas de geração não encontradas. Prepare o runtime Windows ou instale as dependências no workspace.".to_string())?;
     let assets = resolve_asset_settings()?;
 
-    let marp_bin = tool_root.join("node_modules").join(".bin").join("marp.cmd");
-    if !marp_bin.is_file() {
-        return Err("Marp CLI não encontrado em node_modules/.bin/marp.cmd.".to_string());
+    let marp_entry = runtime.marp_entry.clone();
+    if !marp_entry.is_file() {
+        return Err("Marp CLI não encontrado no runtime de geração.".to_string());
     }
 
     let temp_dir = std::env::temp_dir();
@@ -2488,12 +2609,12 @@ fn render_marp_html(workspace_path: String, content: String) -> Result<String, S
     fs::write(&temp_input, &prepared_content)
         .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
 
-    let marp_bin_str = marp_bin.to_string_lossy().to_string();
+    let marp_entry_str = marp_entry.to_string_lossy().to_string();
     let input_str = temp_input.to_string_lossy().to_string();
     let output_str = temp_output.to_string_lossy().to_string();
 
-    let status = Command::new("cmd")
-        .args(["/C", &marp_bin_str, "--html", "--allow-local-files", "--output", &output_str, &input_str])
+    let status = Command::new(&runtime.node_command)
+        .args([&marp_entry_str, "--html", "--allow-local-files", "--output", &output_str, &input_str])
         .status()
         .map_err(|e| format!("Falha ao executar o Marp CLI: {}", e))?;
 
@@ -2513,11 +2634,11 @@ fn render_marp_html(workspace_path: String, content: String) -> Result<String, S
 }
 
 #[tauri::command]
-fn render_activity_html(workspace_path: String, content: String) -> Result<String, String> {
+fn render_activity_html(app: tauri::AppHandle, workspace_path: String, content: String) -> Result<String, String> {
     let root = resolve_workspace_root(&workspace_path)?;
-    let tool_root = resolve_generation_tool_root(&root)
-        .map_err(|_| "Ferramentas de geração não encontradas. Instale as dependências no workspace.".to_string())?;
-    let markdown_it_module = tool_root.join("node_modules").join("markdown-it");
+    let runtime = resolve_generation_runtime(Some(&app), &root)
+        .map_err(|_| "Ferramentas de geração não encontradas. Prepare o runtime Windows ou instale as dependências no workspace.".to_string())?;
+    let markdown_it_module = runtime.markdown_it_module.clone();
 
     if !markdown_it_module.exists() {
         return Err("markdown-it não encontrado em node_modules.".to_string());
@@ -2541,7 +2662,7 @@ fn render_activity_html(workspace_path: String, content: String) -> Result<Strin
     fs::write(&temp_input, &content)
         .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
 
-    let status = Command::new("node")
+    let status = Command::new(&runtime.node_command)
         .arg("-e")
         .arg(ACTIVITY_HTML_RENDER_SCRIPT)
         .arg(markdown_it_module.to_string_lossy().to_string())

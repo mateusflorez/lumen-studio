@@ -72,6 +72,7 @@ export type GlobalSearchResult = {
 };
 
 export type GenerationEnvironmentStatus = {
+  runtimeSource: "bundled" | "workspace" | "missing";
   toolRoot: string | null;
   marpAvailable: boolean;
   markdownItAvailable: boolean;
