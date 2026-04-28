@@ -3,10 +3,12 @@ use tauri::Manager;
 use std::{
     fs,
     path::{Component, Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
     time::SystemTime,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 #[derive(Debug, Deserialize)]
 struct SubjectConfig {
@@ -1822,10 +1824,12 @@ fn resolve_generation_runtime(
 fn resolve_bundled_generation_runtime(app: Option<&tauri::AppHandle>) -> Option<GenerationRuntime> {
     let app = app?;
     let resource_dir = app.path().resource_dir().ok()?;
-    let runtime_root = resource_dir.join("windows-runtime");
-    if !runtime_root.is_dir() {
-        return None;
-    }
+    let runtime_root = [
+        resource_dir.join("windows-runtime"),
+        resource_dir.join("resources").join("windows-runtime"),
+    ]
+    .into_iter()
+    .find(|candidate| candidate.is_dir())?;
 
     let marp_entry = resolve_marp_cli_entry(&runtime_root);
     let markdown_it_module = runtime_root.join("node_modules").join("markdown-it");
@@ -1879,6 +1883,44 @@ fn resolve_marp_cli_entry(root: &Path) -> PathBuf {
     root.join("node_modules").join("@marp-team").join("marp-cli").join("bin").join("marp.js")
 }
 
+fn summarize_process_output(output: &std::process::Output) -> String {
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if !stderr.is_empty() {
+        return stderr;
+    }
+
+    if !stdout.is_empty() {
+        return stdout;
+    }
+
+    format!("processo encerrou com código {:?}", output.status.code())
+}
+
+fn path_for_node_runtime(target: &Path, runtime_root: &Path) -> String {
+    if let Ok(relative) = target.strip_prefix(runtime_root) {
+        let normalized = relative
+            .to_string_lossy()
+            .replace('\\', "/");
+        return format!("./{}", normalized);
+    }
+
+    target.to_string_lossy().to_string()
+}
+
+fn configure_child_process(command: &mut Command) -> &mut Command {
+    command.stdin(Stdio::null());
+
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    command
+}
+
 fn generate_lesson_output(
     runtime: &GenerationRuntime,
     content_path: &Path,
@@ -1913,11 +1955,13 @@ fn generate_lesson_output(
     fs::write(&temp_input, prepared_content)
         .map_err(|error| format!("Não foi possível preparar a aula para exportação: {}", error))?;
 
-    let marp_entry_string = marp_entry.to_string_lossy().to_string();
+    let marp_entry_string = path_for_node_runtime(&marp_entry, &runtime.root);
     let output_file_string = output_file.to_string_lossy().to_string();
     let content_path_string = temp_input.to_string_lossy().to_string();
 
-    let status = Command::new(&runtime.node_command)
+    let mut command = Command::new(&runtime.node_command);
+    configure_child_process(&mut command)
+        .current_dir(&runtime.root)
         .args([
             marp_entry_string.as_str(),
             "--pptx",
@@ -1925,14 +1969,18 @@ fn generate_lesson_output(
             "--output",
             output_file_string.as_str(),
             content_path_string.as_str(),
-        ])
-        .status()
+        ]);
+    let output = command
+        .output()
         .map_err(|error| format!("Não foi possível executar o Marp CLI: {}", error))?;
 
     let _ = fs::remove_file(&temp_input);
 
-    if !status.success() || !output_file.is_file() {
-        return Err("Falha ao gerar o slide. Verifique se o Marp CLI está instalado corretamente.".to_string());
+    if !output.status.success() || !output_file.is_file() {
+        return Err(format!(
+            "Falha ao gerar o slide.\n\nDetalhes: {}",
+            summarize_process_output(&output)
+        ));
     }
 
     Ok(())
@@ -1968,12 +2016,14 @@ fn generate_activity_output(
         .map(|path| path.to_string_lossy().to_string())
         .unwrap_or_default();
     let theme_id = resolved_assets.color_theme.id.to_string();
-    let markdown_it_string = markdown_it_module.to_string_lossy().to_string();
+    let markdown_it_string = path_for_node_runtime(&markdown_it_module, &runtime.root);
     let content_path_string = content_path.to_string_lossy().to_string();
     let temp_html_string = temp_html.to_string_lossy().to_string();
     let print_arg = format!("--print-to-pdf={}", output_file.to_string_lossy());
 
-    let render_status = Command::new(&runtime.node_command)
+    let mut render_command = Command::new(&runtime.node_command);
+    configure_child_process(&mut render_command)
+        .current_dir(&runtime.root)
         .arg("-e")
         .arg(ACTIVITY_HTML_RENDER_SCRIPT)
         .arg(markdown_it_string.as_str())
@@ -1981,29 +2031,38 @@ fn generate_activity_output(
         .arg(temp_html_string.as_str())
         .arg(title.as_str())
         .arg(logo_path.as_str())
-        .arg(theme_id.as_str())
-        .status()
+        .arg(theme_id.as_str());
+    let render_output = render_command
+        .output()
         .map_err(|error| format!("Não foi possível preparar o HTML da atividade: {}", error))?;
 
-    if !render_status.success() || !temp_html.is_file() {
-        return Err("Falha ao preparar o HTML da atividade para exportação.".to_string());
+    if !render_output.status.success() || !temp_html.is_file() {
+        return Err(format!(
+            "Falha ao preparar o HTML da atividade para exportação.\n\nDetalhes: {}",
+            summarize_process_output(&render_output)
+        ));
     }
 
     let file_url = format!("file:///{}", temp_html.to_string_lossy().replace('\\', "/"));
-    let pdf_status = Command::new(browser_path)
+    let mut pdf_command = Command::new(browser_path);
+    configure_child_process(&mut pdf_command)
         .args([
             "--headless",
             "--disable-gpu",
             print_arg.as_str(),
             file_url.as_str(),
-        ])
-        .status()
+        ]);
+    let pdf_output = pdf_command
+        .output()
         .map_err(|error| format!("Não foi possível gerar o PDF da atividade: {}", error))?;
 
     let _ = fs::remove_file(&temp_html);
 
-    if !pdf_status.success() || !output_file.is_file() {
-        return Err("Falha ao gerar o PDF da atividade.".to_string());
+    if !pdf_output.status.success() || !output_file.is_file() {
+        return Err(format!(
+            "Falha ao gerar o PDF da atividade.\n\nDetalhes: {}",
+            summarize_process_output(&pdf_output)
+        ));
     }
 
     Ok(())
@@ -2609,20 +2668,26 @@ fn render_marp_html(app: tauri::AppHandle, workspace_path: String, content: Stri
     fs::write(&temp_input, &prepared_content)
         .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
 
-    let marp_entry_str = marp_entry.to_string_lossy().to_string();
+    let marp_entry_str = path_for_node_runtime(&marp_entry, &runtime.root);
     let input_str = temp_input.to_string_lossy().to_string();
     let output_str = temp_output.to_string_lossy().to_string();
 
-    let status = Command::new(&runtime.node_command)
-        .args([&marp_entry_str, "--html", "--allow-local-files", "--output", &output_str, &input_str])
-        .status()
+    let mut command = Command::new(&runtime.node_command);
+    configure_child_process(&mut command)
+        .current_dir(&runtime.root)
+        .args([&marp_entry_str, "--html", "--allow-local-files", "--output", &output_str, &input_str]);
+    let output = command
+        .output()
         .map_err(|e| format!("Falha ao executar o Marp CLI: {}", e))?;
 
     let _ = fs::remove_file(&temp_input);
 
-    if !status.success() || !temp_output.is_file() {
+    if !output.status.success() || !temp_output.is_file() {
         let _ = fs::remove_file(&temp_output);
-        return Err("Falha ao renderizar os slides. Verifique se o Marp CLI está instalado corretamente.".to_string());
+        return Err(format!(
+            "Falha ao renderizar os slides.\n\nDetalhes: {}",
+            summarize_process_output(&output)
+        ));
     }
 
     let html = fs::read_to_string(&temp_output)
@@ -2662,23 +2727,29 @@ fn render_activity_html(app: tauri::AppHandle, workspace_path: String, content: 
     fs::write(&temp_input, &content)
         .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
 
-    let status = Command::new(&runtime.node_command)
+    let mut command = Command::new(&runtime.node_command);
+    configure_child_process(&mut command)
+        .current_dir(&runtime.root)
         .arg("-e")
         .arg(ACTIVITY_HTML_RENDER_SCRIPT)
-        .arg(markdown_it_module.to_string_lossy().to_string())
+        .arg(path_for_node_runtime(&markdown_it_module, &runtime.root))
         .arg(temp_input.to_string_lossy().to_string())
         .arg(temp_output.to_string_lossy().to_string())
         .arg("Preview da atividade")
         .arg(logo_path)
-        .arg(theme_id)
-        .status()
+        .arg(theme_id);
+    let output = command
+        .output()
         .map_err(|e| format!("Falha ao renderizar a atividade: {}", e))?;
 
     let _ = fs::remove_file(&temp_input);
 
-    if !status.success() || !temp_output.is_file() {
+    if !output.status.success() || !temp_output.is_file() {
         let _ = fs::remove_file(&temp_output);
-        return Err("Falha ao montar o preview da atividade.".to_string());
+        return Err(format!(
+            "Falha ao montar o preview da atividade.\n\nDetalhes: {}",
+            summarize_process_output(&output)
+        ));
     }
 
     let html = fs::read_to_string(&temp_output)

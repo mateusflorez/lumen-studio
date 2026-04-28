@@ -24,6 +24,13 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/lumen-studio-installer.ico",
+        "headerImage": "icons/header.bmp",
+        "sidebarImage": "icons/side.bmp"
+      }
+    },
     "resources": [
       "resources/windows-runtime/**/*"
     ],

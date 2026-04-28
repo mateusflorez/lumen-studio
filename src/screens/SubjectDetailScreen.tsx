@@ -1,4 +1,4 @@
-import type { SubjectDetail, ContentItem, GenerationEnvironmentStatus } from "../types";
+import type { SubjectDetail, ContentItem } from "../types";
 import { humanizeSlug } from "../utils";
 import { LoadingState, ErrorState } from "../components/FeedbackStates";
 import { ContentColumn } from "../components/ContentColumn";
@@ -12,8 +12,6 @@ export function SubjectDetailScreen({
   processingOutputPath,
   generationBusy,
   generatingAll,
-  generationEnvironment,
-  generationEnvironmentLoading,
   onEditSubject,
   onGenerateAll,
   onSelectContent,
@@ -37,8 +35,6 @@ export function SubjectDetailScreen({
   processingOutputPath: string | null;
   generationBusy: boolean;
   generatingAll: boolean;
-  generationEnvironment: GenerationEnvironmentStatus | null;
-  generationEnvironmentLoading: boolean;
   onEditSubject: () => void;
   onGenerateAll: () => void;
   onSelectContent: (path: string) => void;
@@ -131,33 +127,6 @@ export function SubjectDetailScreen({
                   <strong>{outdatedItems}</strong>
                   <span>desatualizados</span>
                 </div>
-              </div>
-
-              <div className="subject-environment">
-                <div className="subject-environment-header">
-                  <p className="preview-label">Ambiente de geração</p>
-                  {generationEnvironmentLoading ? (
-                    <span className="status-chip status-chip-saving">verificando...</span>
-                  ) : null}
-                </div>
-                {generationEnvironment ? (
-                  <div className="subject-environment-list">
-                    <div className="subject-environment-item">
-                      <span className={`status-chip ${generationEnvironment.lessonReady ? "status-chip-ok" : "status-chip-warning"}`}>
-                        {generationEnvironment.lessonReady ? "◉ slides prontos" : "◎ slides pendentes"}
-                      </span>
-                      <p className="subject-environment-copy">{generationEnvironment.lessonMessage}</p>
-                    </div>
-                    <div className="subject-environment-item">
-                      <span className={`status-chip ${generationEnvironment.activityReady ? "status-chip-ok" : "status-chip-warning"}`}>
-                        {generationEnvironment.activityReady ? "◉ pdf pronto" : "◎ pdf pendente"}
-                      </span>
-                      <p className="subject-environment-copy">{generationEnvironment.activityMessage}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="subject-environment-copy">Não foi possível verificar o ambiente de geração.</p>
-                )}
               </div>
             </section>
           ) : null}
