@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { ContentItem } from "../types";
 import { statusGlyph, statusLabel, formatUpdatedAt } from "../utils";
 
@@ -38,6 +39,25 @@ export function ContentColumn({
   onDelete: (item: ContentItem) => void;
   onPreview: (item: ContentItem) => void;
 }) {
+  const [openMenuPath, setOpenMenuPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (target.closest("[data-content-menu]")) return;
+      setOpenMenuPath(null);
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
+  function handleMenuAction(action: () => void) {
+    setOpenMenuPath(null);
+    action();
+  }
+
   return (
     <section className="content-column">
       <div className="content-column-header">
@@ -81,14 +101,14 @@ export function ContentColumn({
                   <button
                     type="button"
                     className="ghost-action"
-                    onClick={() => onPreview(item)}
+                    onClick={() => handleMenuAction(() => onPreview(item))}
                   >
                     Preview
                   </button>
                   <button
                     type="button"
                     className="ghost-action"
-                    onClick={() => onGenerate(item)}
+                    onClick={() => handleMenuAction(() => onGenerate(item))}
                     disabled={busyPath === item.relativePath}
                   >
                     {busyPath === item.relativePath ? "gerando..." : "Gerar"}
@@ -97,48 +117,65 @@ export function ContentColumn({
                     <button
                       type="button"
                       className="ghost-action"
-                      onClick={() => onOpenOutput(item)}
+                      onClick={() => handleMenuAction(() => onOpenOutput(item))}
                     >
                       Abrir
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className="ghost-action"
-                    onClick={() => onMoveUp(item)}
-                    disabled={index === 0}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-action"
-                    onClick={() => onMoveDown(item)}
-                    disabled={index === items.length - 1}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-action"
-                    onClick={() => onDuplicate(item)}
-                  >
-                    Duplicar
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-action"
-                    onClick={() => onRename(item)}
-                  >
-                    Renomear
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-action danger-action content-delete-button"
-                    onClick={() => onDelete(item)}
-                  >
-                    Excluir
-                  </button>
+                  <div className="content-card-menu" data-content-menu>
+                    <button
+                      type="button"
+                      className={`ghost-action content-card-menu-trigger${openMenuPath === item.relativePath ? " ghost-action--active" : ""}`}
+                      onClick={() =>
+                        setOpenMenuPath((current) =>
+                          current === item.relativePath ? null : item.relativePath,
+                        )
+                      }
+                    >
+                      Mais
+                    </button>
+                    {openMenuPath === item.relativePath ? (
+                      <div className="content-card-menu-popover">
+                        <button
+                          type="button"
+                          className="content-card-menu-item"
+                          onClick={() => handleMenuAction(() => onMoveUp(item))}
+                          disabled={index === 0}
+                        >
+                          Mover para cima
+                        </button>
+                        <button
+                          type="button"
+                          className="content-card-menu-item"
+                          onClick={() => handleMenuAction(() => onMoveDown(item))}
+                          disabled={index === items.length - 1}
+                        >
+                          Mover para baixo
+                        </button>
+                        <button
+                          type="button"
+                          className="content-card-menu-item"
+                          onClick={() => handleMenuAction(() => onDuplicate(item))}
+                        >
+                          Duplicar
+                        </button>
+                        <button
+                          type="button"
+                          className="content-card-menu-item"
+                          onClick={() => handleMenuAction(() => onRename(item))}
+                        >
+                          Renomear
+                        </button>
+                        <button
+                          type="button"
+                          className="content-card-menu-item is-danger"
+                          onClick={() => handleMenuAction(() => onDelete(item))}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </article>
