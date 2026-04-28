@@ -252,7 +252,7 @@ A migração é incremental: o Studio começa lendo arquivos existentes no prime
 
 ### Fase 6 — Segurança, visão e produtividade
 - [ ] Melhorar o fluxo de conflito de edição externa com opções de recarregar, comparar e manter alterações locais
-- [ ] Criar visão geral da disciplina com progresso, itens sem output e itens desatualizados
+- [x] Criar visão geral da disciplina com progresso, itens sem output e itens desatualizados
 - [ ] Adicionar busca global por disciplinas, aulas, atividades e conteúdo interno dos arquivos
 - [ ] Melhorar diagnóstico de ambiente quando dependências de geração não estiverem instaladas
 - [ ] Adicionar histórico simples ou backup automático por arquivo

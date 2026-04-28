@@ -924,8 +924,6 @@ function App() {
           />
         ) : (
           <SubjectDetailScreen
-            workspacePath={workspacePath}
-            changingWorkspace={changingWorkspace}
             selectedSubject={selectedSubject}
             selectedSubjectSlug={selectedSubjectSlug!}
             selectedContentPath={selectedContentPath}
@@ -934,7 +932,6 @@ function App() {
             processingOutputPath={processingOutputPath}
             generationBusy={generationBusy}
             generatingAll={generatingAll}
-            onChooseWorkspace={handleChooseWorkspace}
             onEditSubject={() => setEditSubjectOpen(true)}
             onGenerateAll={() => void handleGenerateAllContent()}
             onSelectContent={setSelectedContentPath}

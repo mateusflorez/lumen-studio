@@ -1,11 +1,9 @@
 import type { SubjectDetail, ContentItem } from "../types";
-import { flagClassName, humanizeSlug } from "../utils";
+import { humanizeSlug } from "../utils";
 import { LoadingState, ErrorState } from "../components/FeedbackStates";
 import { ContentColumn } from "../components/ContentColumn";
 
 export function SubjectDetailScreen({
-  workspacePath,
-  changingWorkspace,
   selectedSubject,
   selectedSubjectSlug,
   selectedContentPath,
@@ -14,7 +12,6 @@ export function SubjectDetailScreen({
   processingOutputPath,
   generationBusy,
   generatingAll,
-  onChooseWorkspace,
   onEditSubject,
   onGenerateAll,
   onSelectContent,
@@ -30,8 +27,6 @@ export function SubjectDetailScreen({
   onDeleteContent,
   onPreviewContent,
 }: {
-  workspacePath: string;
-  changingWorkspace: boolean;
   selectedSubject: SubjectDetail | null;
   selectedSubjectSlug: string;
   selectedContentPath: string | null;
@@ -40,7 +35,6 @@ export function SubjectDetailScreen({
   processingOutputPath: string | null;
   generationBusy: boolean;
   generatingAll: boolean;
-  onChooseWorkspace: () => Promise<void>;
   onEditSubject: () => void;
   onGenerateAll: () => void;
   onSelectContent: (path: string) => void;
@@ -56,6 +50,15 @@ export function SubjectDetailScreen({
   onDeleteContent: (item: ContentItem) => void;
   onPreviewContent: (item: ContentItem) => void;
 }) {
+  const allItems = selectedSubject
+    ? [...selectedSubject.lessons, ...selectedSubject.activities]
+    : [];
+  const totalItems = allItems.length;
+  const itemsWithoutOutput = allItems.filter((item) => item.status === "none").length;
+  const outdatedItems = allItems.filter((item) => item.status === "outdated").length;
+  const generatedItems = allItems.filter((item) => item.status !== "none").length;
+  const progressPercent = totalItems > 0 ? Math.round((generatedItems / totalItems) * 100) : 0;
+
   return (
     <section className="subject-detail-shell" aria-labelledby="subject-detail-title">
       <div className="subject-detail-header">
@@ -74,15 +77,6 @@ export function SubjectDetailScreen({
 
         <aside className="workspace-panel subject-detail-panel">
           <div className="workspace-heading">
-            <p className="preview-label">Pasta atual</p>
-            <button
-              type="button"
-              className="ghost-action"
-              onClick={() => void onChooseWorkspace()}
-              disabled={changingWorkspace}
-            >
-              {changingWorkspace ? "abrindo..." : "alterar caminho"}
-            </button>
             <button
               type="button"
               className="ghost-action"
@@ -100,17 +94,41 @@ export function SubjectDetailScreen({
               {generatingAll ? "gerando tudo..." : "gerar tudo"}
             </button>
           </div>
-          <p className="workspace-path">{workspacePath}</p>
+
           {selectedSubject ? (
-            <div className="subject-detail-flags">
-              <span className="status-chip">{selectedSubject.slug}</span>
-              <span className={flagClassName(selectedSubject.hasContext)}>
-                {selectedSubject.hasContext ? "◉ contexto" : "○ sem contexto"}
-              </span>
-              <span className={flagClassName(selectedSubject.hasPlan)}>
-                {selectedSubject.hasPlan ? "◉ plano" : "○ sem plano"}
-              </span>
-            </div>
+            <section className="subject-overview-inline" aria-labelledby="subject-overview-title">
+              <div className="subject-overview-inline-header">
+                <div>
+                  <p className="preview-label">Visão geral</p>
+                  <h2 id="subject-overview-title">Progresso da disciplina</h2>
+                </div>
+                <span className="status-chip status-chip-ok">{progressPercent}% com output</span>
+              </div>
+
+              <div className="subject-overview-progress">
+                <div className="generation-progress-track" aria-hidden="true">
+                  <div
+                    className="generation-progress-bar"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="subject-overview-inline-stats">
+                <div className="subject-overview-inline-stat">
+                  <strong>{totalItems}</strong>
+                  <span>itens</span>
+                </div>
+                <div className="subject-overview-inline-stat">
+                  <strong>{itemsWithoutOutput}</strong>
+                  <span>sem output</span>
+                </div>
+                <div className="subject-overview-inline-stat">
+                  <strong>{outdatedItems}</strong>
+                  <span>desatualizados</span>
+                </div>
+              </div>
+            </section>
           ) : null}
         </aside>
       </div>
