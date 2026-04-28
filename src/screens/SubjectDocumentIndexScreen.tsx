@@ -28,7 +28,7 @@ export function SubjectDocumentIndexScreen({
   const copy = isContext
     ? "Abra o contexto de qualquer disciplina para editar objetivos, materiais, competências e anotações."
     : "Abra o plano geral para organizar visão geral, objetivos, sequência de aulas e datas.";
-  const emptyLabel = isContext ? "sem contexto" : "sem plano";
+  const emptyLabel = isContext ? "criar contexto" : "criar plano";
   const readyLabel = isContext ? "◉ contexto" : "◉ plano";
 
   return (
@@ -89,7 +89,6 @@ export function SubjectDocumentIndexScreen({
                     type="button"
                     className="subject-card-open"
                     onClick={() => onOpenDocument(subject)}
-                    disabled={!available}
                   >
                     <div className="subject-card-top">
                       <span
@@ -107,7 +106,7 @@ export function SubjectDocumentIndexScreen({
                       <p className="subject-metadata">
                         {available
                           ? `abrir ${isContext ? "contexto" : "plano geral"}`
-                          : emptyLabel}
+                          : `${emptyLabel} automaticamente`}
                       </p>
                     </div>
                   </button>

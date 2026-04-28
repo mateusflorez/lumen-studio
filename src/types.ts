@@ -58,6 +58,10 @@ export type CreateContentItemResult = {
   relativePath: string;
 };
 
+export type RenameContentItemResult = {
+  relativePath: string;
+};
+
 export type AssetSettingsState = {
   appDataDir: string;
   fallbackDir: string | null;

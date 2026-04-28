@@ -1187,6 +1187,7 @@
 }
 
 .modal-input {
+  box-sizing: border-box;
   width: 100%;
   padding: 0.9rem 1rem;
   border: 1px solid var(--border);
@@ -1243,6 +1244,7 @@
   font-family: var(--font-display);
   font-size: 1.35rem;
   line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1040px) {

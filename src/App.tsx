@@ -13,6 +13,7 @@ import type {
   CreateTemplateSubjectResult,
   CreateSubjectResult,
   CreateContentItemResult,
+  RenameContentItemResult,
   SaveState,
   DeleteTarget,
   AssetSettingsState,
@@ -24,6 +25,7 @@ import { CreateSubjectModal } from "./components/modals/CreateSubjectModal";
 import { CreateContentModal } from "./components/modals/CreateContentModal";
 import { DeleteModal } from "./components/modals/DeleteModal";
 import { PreviewModal } from "./components/modals/PreviewModal";
+import { RenameContentModal } from "./components/modals/RenameContentModal";
 import { HomeScreen } from "./screens/HomeScreen";
 import { SubjectDetailScreen } from "./screens/SubjectDetailScreen";
 import { SubjectDocumentIndexScreen } from "./screens/SubjectDocumentIndexScreen";
@@ -63,6 +65,7 @@ function App() {
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
   const [createActivityOpen, setCreateActivityOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [renameTarget, setRenameTarget] = useState<ContentItem | null>(null);
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [processingOutputPath, setProcessingOutputPath] = useState<string | null>(null);
@@ -514,6 +517,73 @@ function App() {
     }
   }
 
+  async function handleRenameContent(theme: string) {
+    if (!workspacePath || !selectedSubjectSlug || !renameTarget) return;
+
+    try {
+      const result = await invoke<RenameContentItemResult>("rename_content_item", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        relativePath: renameTarget.relativePath,
+        theme,
+      });
+
+      await Promise.all([
+        refreshSubjects(workspacePath),
+        refreshSubjectDetail(workspacePath, selectedSubjectSlug),
+      ]);
+
+      setSelectedContentPath(result.relativePath);
+      setRenameTarget(null);
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao renomear o arquivo selecionado."));
+      throw cause;
+    }
+  }
+
+  async function handleDuplicateContent(item: ContentItem) {
+    if (!workspacePath || !selectedSubjectSlug) return;
+
+    try {
+      const result = await invoke<CreateContentItemResult>("duplicate_content_item", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        relativePath: item.relativePath,
+      });
+
+      await Promise.all([
+        refreshSubjects(workspacePath),
+        refreshSubjectDetail(workspacePath, selectedSubjectSlug),
+      ]);
+
+      setSelectedContentPath(result.relativePath);
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao duplicar o arquivo selecionado."));
+    }
+  }
+
+  async function handleReorderContent(item: ContentItem, direction: "up" | "down") {
+    if (!workspacePath || !selectedSubjectSlug) return;
+
+    try {
+      const result = await invoke<CreateContentItemResult>("reorder_content_item", {
+        workspacePath,
+        subjectSlug: selectedSubjectSlug,
+        relativePath: item.relativePath,
+        direction,
+      });
+
+      await Promise.all([
+        refreshSubjects(workspacePath),
+        refreshSubjectDetail(workspacePath, selectedSubjectSlug),
+      ]);
+
+      setSelectedContentPath(result.relativePath);
+    } catch (cause) {
+      setDetailError(describeError(cause, "Falha ao reordenar o arquivo selecionado."));
+    }
+  }
+
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -808,6 +878,10 @@ function App() {
             onCreateActivity={() => setCreateActivityOpen(true)}
             onGenerate={(item) => void handleGenerateContent(item)}
             onOpenOutput={(item) => void handleOpenOutputFolder(item)}
+            onMoveContentUp={(item) => void handleReorderContent(item, "up")}
+            onMoveContentDown={(item) => void handleReorderContent(item, "down")}
+            onDuplicateContent={(item) => void handleDuplicateContent(item)}
+            onRenameContent={setRenameTarget}
             onDeleteContent={(item) =>
               setDeleteTarget({
                 kind: "content",
@@ -917,6 +991,14 @@ function App() {
               setDetailError(describeError(cause, "Falha ao criar a atividade."));
             }
           }}
+        />
+      ) : null}
+
+      {renameTarget ? (
+        <RenameContentModal
+          item={renameTarget}
+          onClose={() => setRenameTarget(null)}
+          onConfirm={handleRenameContent}
         />
       ) : null}
 

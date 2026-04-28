@@ -92,6 +92,18 @@ struct CreateContentItemResult {
     relative_path: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ContentKind {
+    Lesson,
+    Activity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReorderDirection {
+    Up,
+    Down,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AssetSettingsState {
@@ -187,6 +199,7 @@ fn get_subject_detail(workspace_path: String, subject_slug: String) -> Result<Su
         .filter(|value| is_hex_color(value))
         .cloned()
         .unwrap_or_else(|| fallback_color(&subject_slug));
+    ensure_subject_support_files(&subject_path, &display_name)?;
 
     Ok(SubjectDetail {
         id: subject_slug.clone(),
@@ -207,6 +220,7 @@ fn read_content_file(
     relative_path: String,
 ) -> Result<EditableContentFile, String> {
     let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    ensure_subject_file_for_relative_path(&subject_path, &subject_slug, &relative_path)?;
     let content_path = resolve_content_path(&subject_path, &relative_path)?;
 
     if !content_path.is_file() {
@@ -311,6 +325,247 @@ fn delete_content_item(
         .map_err(|error| format!("Não foi possível excluir o arquivo: {}", error))?;
 
     Ok(())
+}
+
+#[tauri::command]
+fn rename_content_item(
+    workspace_path: String,
+    subject_slug: String,
+    relative_path: String,
+    theme: String,
+) -> Result<CreateContentItemResult, String> {
+    let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    let content_path = resolve_content_path(&subject_path, &relative_path)?;
+
+    if !content_path.is_file() {
+        return Err(format!("Arquivo não encontrado: {}", relative_path));
+    }
+
+    let trimmed_theme = theme.trim();
+    if trimmed_theme.is_empty() {
+        return Err("Informe o novo tema do arquivo.".to_string());
+    }
+
+    let file_name = content_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "Nome de arquivo inválido.".to_string())?;
+    let (kind, folder_name, file_prefix) = classify_content_item(&relative_path)?;
+    let number = extract_content_number(file_name, file_prefix)?;
+    let theme_slug = {
+        let slug = to_snake_case(trimmed_theme);
+        if slug.is_empty() { "tema".to_string() } else { slug }
+    };
+    let next_file_name = format!("{}{:02}_{}.md", file_prefix, number, theme_slug);
+    let next_relative_path = format!("{}/{}", folder_name, next_file_name);
+    let next_content_path = subject_path.join(&next_relative_path);
+
+    if next_content_path != content_path && next_content_path.exists() {
+        return Err(format!("Já existe um arquivo com esse nome: {}", next_file_name));
+    }
+
+    let content = fs::read_to_string(&content_path)
+        .map_err(|error| format!("Não foi possível ler o arquivo para renomear: {}", error))?;
+    let updated_content = rewrite_content_identity(&content, kind, number, trimmed_theme);
+
+    if next_content_path != content_path {
+        fs::rename(&content_path, &next_content_path)
+            .map_err(|error| format!("Não foi possível renomear o arquivo: {}", error))?;
+
+        if let Err(error) = fs::write(&next_content_path, &updated_content) {
+            let _ = fs::rename(&next_content_path, &content_path);
+            return Err(format!("Não foi possível atualizar o conteúdo renomeado: {}", error));
+        }
+
+        rename_generated_output_if_present(&subject_path, &relative_path, &next_relative_path);
+    } else {
+        fs::write(&content_path, &updated_content)
+            .map_err(|error| format!("Não foi possível atualizar o conteúdo renomeado: {}", error))?;
+    }
+
+    Ok(CreateContentItemResult {
+        relative_path: next_relative_path,
+    })
+}
+
+#[tauri::command]
+fn duplicate_content_item(
+    workspace_path: String,
+    subject_slug: String,
+    relative_path: String,
+) -> Result<CreateContentItemResult, String> {
+    let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    let content_path = resolve_content_path(&subject_path, &relative_path)?;
+
+    if !content_path.is_file() {
+        return Err(format!("Arquivo não encontrado: {}", relative_path));
+    }
+
+    let file_name = content_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "Nome de arquivo inválido.".to_string())?;
+    let (kind, folder_name, file_prefix) = classify_content_item(&relative_path)?;
+    let source_number = extract_content_number(file_name, file_prefix)?;
+    let next_number = next_content_number(&subject_path.join(folder_name), file_prefix);
+    let content = fs::read_to_string(&content_path)
+        .map_err(|error| format!("Não foi possível ler o arquivo para duplicar: {}", error))?;
+    let theme = extract_theme_for_content(&content, kind, source_number, file_name);
+    let theme_slug = {
+        let slug = to_snake_case(&theme);
+        if slug.is_empty() { "tema".to_string() } else { slug }
+    };
+    let next_file_name = format!("{}{:02}_{}.md", file_prefix, next_number, theme_slug);
+    let next_relative_path = format!("{}/{}", folder_name, next_file_name);
+    let next_content_path = subject_path.join(&next_relative_path);
+
+    if next_content_path.exists() {
+        return Err(format!("Já existe um arquivo com esse nome: {}", next_file_name));
+    }
+
+    let duplicated_content = rewrite_content_identity(&content, kind, next_number, &theme);
+    fs::write(&next_content_path, duplicated_content)
+        .map_err(|error| format!("Não foi possível duplicar o arquivo: {}", error))?;
+
+    Ok(CreateContentItemResult {
+        relative_path: next_relative_path,
+    })
+}
+
+#[tauri::command]
+fn reorder_content_item(
+    workspace_path: String,
+    subject_slug: String,
+    relative_path: String,
+    direction: String,
+) -> Result<CreateContentItemResult, String> {
+    let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    let _content_path = resolve_content_path(&subject_path, &relative_path)?;
+    let (kind, folder_name, file_prefix) = classify_content_item(&relative_path)?;
+    let direction = parse_reorder_direction(&direction)?;
+    let folder_path = subject_path.join(folder_name);
+
+    let mut items = fs::read_dir(&folder_path)
+        .map_err(|error| format!("Não foi possível ler a pasta de conteúdo: {}", error))?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_file())
+        .filter(|entry| {
+            entry
+                .path()
+                .extension()
+                .and_then(|value| value.to_str())
+                .is_some_and(|value| value.eq_ignore_ascii_case("md"))
+        })
+        .map(|entry| {
+            let path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            let relative_path = format!("{}/{}", folder_name, file_name);
+            (file_name, relative_path, path)
+        })
+        .collect::<Vec<_>>();
+
+    items.sort_by(|left, right| left.0.cmp(&right.0));
+
+    let Some(index) = items.iter().position(|(_, item_relative_path, _)| item_relative_path == &relative_path) else {
+        return Err("Arquivo não encontrado na lista de ordenação.".to_string());
+    };
+
+    match direction {
+        ReorderDirection::Up if index == 0 => {
+            return Ok(CreateContentItemResult { relative_path });
+        }
+        ReorderDirection::Down if index + 1 >= items.len() => {
+            return Ok(CreateContentItemResult { relative_path });
+        }
+        ReorderDirection::Up => items.swap(index, index - 1),
+        ReorderDirection::Down => items.swap(index, index + 1),
+    }
+
+    let mut plans = Vec::with_capacity(items.len());
+    for (next_index, (file_name, previous_relative_path, previous_content_path)) in items.iter().enumerate() {
+        let previous_number = extract_content_number(file_name, file_prefix)?;
+        let previous_content = fs::read_to_string(previous_content_path)
+            .map_err(|error| format!("Não foi possível ler o arquivo para reordenar: {}", error))?;
+        let theme = extract_theme_for_content(&previous_content, kind, previous_number, file_name);
+        let next_number = next_index + 1;
+        let theme_slug = {
+            let slug = to_snake_case(&theme);
+            if slug.is_empty() { "tema".to_string() } else { slug }
+        };
+        let next_file_name = format!("{}{:02}_{}.md", file_prefix, next_number, theme_slug);
+        let next_relative_path = format!("{}/{}", folder_name, next_file_name);
+        let next_content_path = folder_path.join(&next_file_name);
+        let next_content = rewrite_content_identity(&previous_content, kind, next_number, &theme);
+        let previous_output_path = output_path_for_relative_path(&subject_path, previous_relative_path)
+            .filter(|path| path.is_file());
+        let next_output_path = output_path_for_relative_path(&subject_path, &next_relative_path);
+
+        plans.push((
+            previous_relative_path.clone(),
+            previous_content_path.clone(),
+            next_relative_path,
+            next_content_path,
+            next_content,
+            previous_output_path,
+            next_output_path,
+        ));
+    }
+
+    let mut staged_contents = Vec::with_capacity(plans.len());
+    for (index, (_, previous_content_path, _, _, _, _, _)) in plans.iter().enumerate() {
+        let staged_path = folder_path.join(format!(".lumen_reorder_content_{index:03}.tmp"));
+        if staged_path.exists() {
+            fs::remove_file(&staged_path)
+                .map_err(|error| format!("Não foi possível preparar a reordenação: {}", error))?;
+        }
+        fs::rename(previous_content_path, &staged_path)
+            .map_err(|error| format!("Não foi possível preparar a reordenação: {}", error))?;
+        staged_contents.push(staged_path);
+    }
+
+    let mut staged_outputs = Vec::with_capacity(plans.len());
+    for (index, (_, _, _, _, _, previous_output_path, _)) in plans.iter().enumerate() {
+        if let Some(previous_output_path) = previous_output_path {
+            let parent = previous_output_path
+                .parent()
+                .ok_or_else(|| "Não foi possível localizar a pasta de saída para reordenação.".to_string())?;
+            let staged_path = parent.join(format!(".lumen_reorder_output_{index:03}.tmp"));
+            if staged_path.exists() {
+                fs::remove_file(&staged_path)
+                    .map_err(|error| format!("Não foi possível preparar a saída para reordenação: {}", error))?;
+            }
+            fs::rename(previous_output_path, &staged_path)
+                .map_err(|error| format!("Não foi possível preparar a saída para reordenação: {}", error))?;
+            staged_outputs.push(Some(staged_path));
+        } else {
+            staged_outputs.push(None);
+        }
+    }
+
+    let mut moved_relative_path = relative_path.clone();
+    for (index, (previous_relative_path, _, next_relative_path, next_content_path, next_content, _, next_output_path)) in plans.iter().enumerate() {
+        fs::rename(&staged_contents[index], next_content_path)
+            .map_err(|error| format!("Não foi possível finalizar a reordenação: {}", error))?;
+        fs::write(next_content_path, next_content)
+            .map_err(|error| format!("Não foi possível atualizar o conteúdo reordenado: {}", error))?;
+
+        if let (Some(staged_output_path), Some(next_output_path)) = (&staged_outputs[index], next_output_path) {
+            if let Some(parent) = next_output_path.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|error| format!("Não foi possível preparar a pasta de saída: {}", error))?;
+            }
+            fs::rename(staged_output_path, next_output_path)
+                .map_err(|error| format!("Não foi possível renomear a saída gerada: {}", error))?;
+        }
+
+        if previous_relative_path == &relative_path {
+            moved_relative_path = next_relative_path.clone();
+        }
+    }
+
+    Ok(CreateContentItemResult {
+        relative_path: moved_relative_path,
+    })
 }
 
 #[tauri::command]
@@ -558,6 +813,7 @@ fn subject_summary_from_dir(path: PathBuf) -> Option<SubjectSummary> {
         .filter(|value| !value.trim().is_empty())
         .cloned()
         .unwrap_or_else(|| humanize_slug(&slug));
+    ensure_subject_support_files(&path, &display_name).ok()?;
 
     let color = config
         .as_ref()
@@ -707,6 +963,174 @@ fn file_stem(file_name: &str) -> String {
         .to_string()
 }
 
+fn classify_content_item(relative_path: &str) -> Result<(ContentKind, &'static str, &'static str), String> {
+    if relative_path.starts_with("aulas/") {
+        return Ok((ContentKind::Lesson, "aulas", "aula_"));
+    }
+
+    if relative_path.starts_with("atividades/") {
+        return Ok((ContentKind::Activity, "atividades", "atividade_"));
+    }
+
+    Err("Somente aulas e atividades podem ser renomeadas.".to_string())
+}
+
+fn parse_reorder_direction(value: &str) -> Result<ReorderDirection, String> {
+    match value.trim() {
+        "up" => Ok(ReorderDirection::Up),
+        "down" => Ok(ReorderDirection::Down),
+        _ => Err("Direção de reordenação inválida.".to_string()),
+    }
+}
+
+fn extract_content_number(file_name: &str, file_prefix: &str) -> Result<usize, String> {
+    let stem = file_stem(file_name);
+    let suffix = stem
+        .strip_prefix(file_prefix)
+        .ok_or_else(|| format!("Nome de arquivo inválido: {}", file_name))?;
+    let number_text = suffix
+        .split('_')
+        .next()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("Não foi possível identificar a numeração de {}", file_name))?;
+
+    number_text
+        .parse::<usize>()
+        .map_err(|_| format!("Não foi possível identificar a numeração de {}", file_name))
+}
+
+fn rewrite_content_identity(content: &str, kind: ContentKind, number: usize, theme: &str) -> String {
+    let title = match kind {
+        ContentKind::Lesson => format!("Aula {:02} - {}", number, theme),
+        ContentKind::Activity => format!("Atividade {:02} - {}", number, theme),
+    };
+    let heading = match kind {
+        ContentKind::Lesson => format!("## Aula {:02} — {}", number, theme),
+        ContentKind::Activity => format!("# Atividade {:02} - {}", number, theme),
+    };
+    let heading_prefixes = match kind {
+        ContentKind::Lesson => vec![
+            format!("## Aula {:02}", number),
+            format!("# Aula {:02}", number),
+        ],
+        ContentKind::Activity => vec![
+            format!("# Atividade {:02}", number),
+            format!("## Atividade {:02}", number),
+        ],
+    };
+
+    let with_title = replace_frontmatter_value(content, "title", &title);
+    replace_first_heading_with_prefixes(&with_title, &heading_prefixes, &heading)
+}
+
+fn extract_theme_for_content(content: &str, kind: ContentKind, number: usize, file_name: &str) -> String {
+    let title = display_title(content, &humanize_slug(&file_stem(file_name)));
+    let prefixes = match kind {
+        ContentKind::Lesson => vec![
+            format!("Aula {:02} - ", number),
+            format!("Aula {:02} — ", number),
+        ],
+        ContentKind::Activity => vec![
+            format!("Atividade {:02} - ", number),
+            format!("Atividade {:02} — ", number),
+        ],
+    };
+
+    for prefix in prefixes {
+        if let Some(value) = title.strip_prefix(&prefix) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
+        }
+    }
+
+    let stem = file_stem(file_name);
+    let fallback = stem
+        .split('_')
+        .skip(2)
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim()
+        .to_string();
+
+    if fallback.is_empty() {
+        "Tema".to_string()
+    } else {
+        humanize_slug(&fallback.replace(' ', "_"))
+    }
+}
+
+fn replace_frontmatter_value(content: &str, key: &str, next_value: &str) -> String {
+    if !content.starts_with("---") {
+        return content.to_string();
+    }
+
+    let newline = if content.contains("\r\n") { "\r\n" } else { "\n" };
+    let mut lines = content
+        .split('\n')
+        .map(|line| line.trim_end_matches('\r').to_string())
+        .collect::<Vec<_>>();
+    let mut inside_frontmatter = false;
+    let mut frontmatter_markers = 0usize;
+
+    for line in &mut lines {
+        let trimmed = line.trim();
+
+        if trimmed == "---" {
+            frontmatter_markers += 1;
+            if frontmatter_markers == 1 {
+                inside_frontmatter = true;
+            } else {
+                break;
+            }
+            continue;
+        }
+
+        if inside_frontmatter && trimmed.starts_with(&format!("{}:", key)) {
+            *line = format!("{}: {}", key, next_value);
+            return lines.join(newline);
+        }
+    }
+
+    lines.join(newline)
+}
+
+fn replace_first_heading_with_prefixes(
+    content: &str,
+    prefixes: &[String],
+    next_heading: &str,
+) -> String {
+    let newline = if content.contains("\r\n") { "\r\n" } else { "\n" };
+    let mut lines = content
+        .split('\n')
+        .map(|line| line.trim_end_matches('\r').to_string())
+        .collect::<Vec<_>>();
+    let mut inside_frontmatter = false;
+    let mut frontmatter_markers = 0usize;
+
+    for line in &mut lines {
+        let trimmed = line.trim();
+
+        if trimmed == "---" {
+            frontmatter_markers += 1;
+            inside_frontmatter = frontmatter_markers == 1;
+            continue;
+        }
+
+        if inside_frontmatter {
+            continue;
+        }
+
+        if prefixes.iter().any(|prefix| trimmed.starts_with(prefix)) {
+            *line = next_heading.to_string();
+            break;
+        }
+    }
+
+    lines.join(newline)
+}
+
 fn is_subject_directory(path: &Path) -> bool {
     if path
         .file_name()
@@ -725,6 +1149,55 @@ fn is_subject_directory(path: &Path) -> bool {
 fn read_subject_config(path: &Path) -> Option<SubjectConfig> {
     let content = fs::read_to_string(path.join(".conf")).ok()?;
     serde_json::from_str(&content).ok()
+}
+
+fn ensure_subject_support_files(subject_path: &Path, subject_name: &str) -> Result<(), String> {
+    ensure_support_file(
+        &subject_path.join("contexto.md"),
+        &empty_context_template(subject_name),
+        "contexto.md",
+    )?;
+    ensure_support_file(
+        &subject_path.join("plano_geral.md"),
+        &empty_plan_template(subject_name),
+        "plano_geral.md",
+    )?;
+
+    Ok(())
+}
+
+fn ensure_subject_file_for_relative_path(
+    subject_path: &Path,
+    subject_slug: &str,
+    relative_path: &str,
+) -> Result<(), String> {
+    let display_name = read_subject_config(subject_path)
+        .and_then(|cfg| cfg.nome)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| humanize_slug(subject_slug));
+
+    match relative_path {
+        "contexto.md" => ensure_support_file(
+            &subject_path.join("contexto.md"),
+            &empty_context_template(&display_name),
+            "contexto.md",
+        ),
+        "plano_geral.md" => ensure_support_file(
+            &subject_path.join("plano_geral.md"),
+            &empty_plan_template(&display_name),
+            "plano_geral.md",
+        ),
+        _ => Ok(()),
+    }
+}
+
+fn ensure_support_file(path: &Path, content: &str, label: &str) -> Result<(), String> {
+    if path.is_file() {
+        return Ok(());
+    }
+
+    fs::write(path, content)
+        .map_err(|error| format!("Não foi possível criar {} automaticamente: {}", label, error))
 }
 
 fn count_markdown_files(path: &Path) -> usize {
@@ -874,6 +1347,40 @@ fn output_dir_for_relative_path(subject_path: &Path, relative_path: &str) -> Opt
     }
 
     None
+}
+
+fn output_path_for_relative_path(subject_path: &Path, relative_path: &str) -> Option<PathBuf> {
+    let file_name = Path::new(relative_path).file_name()?.to_str()?;
+    let stem = file_stem(file_name);
+
+    if relative_path.starts_with("aulas/") {
+        return Some(subject_path.join("slides").join(format!("{}.pptx", stem)));
+    }
+
+    if relative_path.starts_with("atividades/") {
+        return Some(subject_path.join("atividades").join("pdfs").join(format!("{}.pdf", stem)));
+    }
+
+    None
+}
+
+fn rename_generated_output_if_present(
+    subject_path: &Path,
+    previous_relative_path: &str,
+    next_relative_path: &str,
+) {
+    let Some(previous_output) = output_path_for_relative_path(subject_path, previous_relative_path) else {
+        return;
+    };
+    let Some(next_output) = output_path_for_relative_path(subject_path, next_relative_path) else {
+        return;
+    };
+
+    if previous_output == next_output || !previous_output.is_file() || next_output.exists() {
+        return;
+    }
+
+    let _ = fs::rename(previous_output, next_output);
 }
 
 fn resolve_generation_tool_root(workspace_root: &Path) -> Result<PathBuf, String> {
@@ -1844,6 +2351,9 @@ pub fn run() {
             get_content_file_snapshot,
             delete_subject,
             delete_content_item,
+            rename_content_item,
+            duplicate_content_item,
+            reorder_content_item,
             generate_content_output,
             open_content_output_folder,
             create_subject,

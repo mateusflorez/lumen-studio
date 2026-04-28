@@ -20,6 +20,10 @@ export function SubjectDetailScreen({
   onCreateActivity,
   onGenerate,
   onOpenOutput,
+  onMoveContentUp,
+  onMoveContentDown,
+  onDuplicateContent,
+  onRenameContent,
   onDeleteContent,
   onPreviewContent,
 }: {
@@ -39,6 +43,10 @@ export function SubjectDetailScreen({
   onCreateActivity: () => void;
   onGenerate: (item: ContentItem) => void;
   onOpenOutput: (item: ContentItem) => void;
+  onMoveContentUp: (item: ContentItem) => void;
+  onMoveContentDown: (item: ContentItem) => void;
+  onDuplicateContent: (item: ContentItem) => void;
+  onRenameContent: (item: ContentItem) => void;
   onDeleteContent: (item: ContentItem) => void;
   onPreviewContent: (item: ContentItem) => void;
 }) {
@@ -108,6 +116,10 @@ export function SubjectDetailScreen({
             busyPath={processingOutputPath}
             onGenerate={onGenerate}
             onOpenOutput={onOpenOutput}
+            onMoveUp={onMoveContentUp}
+            onMoveDown={onMoveContentDown}
+            onDuplicate={onDuplicateContent}
+            onRename={onRenameContent}
             onDelete={onDeleteContent}
             onPreview={onPreviewContent}
           />
@@ -123,6 +135,10 @@ export function SubjectDetailScreen({
             busyPath={processingOutputPath}
             onGenerate={onGenerate}
             onOpenOutput={onOpenOutput}
+            onMoveUp={onMoveContentUp}
+            onMoveDown={onMoveContentDown}
+            onDuplicate={onDuplicateContent}
+            onRename={onRenameContent}
             onDelete={onDeleteContent}
             onPreview={onPreviewContent}
           />

@@ -13,6 +13,10 @@ export function ContentColumn({
   busyPath,
   onGenerate,
   onOpenOutput,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+  onRename,
   onDelete,
   onPreview,
 }: {
@@ -27,6 +31,10 @@ export function ContentColumn({
   busyPath: string | null;
   onGenerate: (item: ContentItem) => void;
   onOpenOutput: (item: ContentItem) => void;
+  onMoveUp: (item: ContentItem) => void;
+  onMoveDown: (item: ContentItem) => void;
+  onDuplicate: (item: ContentItem) => void;
+  onRename: (item: ContentItem) => void;
   onDelete: (item: ContentItem) => void;
   onPreview: (item: ContentItem) => void;
 }) {
@@ -49,7 +57,7 @@ export function ContentColumn({
         <div className="content-empty">{emptyMessage}</div>
       ) : (
         <div className="content-list">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <article
               key={item.relativePath}
               className={`content-card ${selectedPath === item.relativePath ? "is-selected" : ""}`}
@@ -94,6 +102,36 @@ export function ContentColumn({
                       Abrir
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => onMoveUp(item)}
+                    disabled={index === 0}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => onMoveDown(item)}
+                    disabled={index === items.length - 1}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => onDuplicate(item)}
+                  >
+                    Duplicar
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => onRename(item)}
+                  >
+                    Renomear
+                  </button>
                   <button
                     type="button"
                     className="ghost-action danger-action content-delete-button"
