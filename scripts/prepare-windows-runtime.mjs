@@ -81,7 +81,24 @@ async function ensureRuntimePackageJson() {
 }
 
 function installRuntimeDependencies() {
-  execFileSync("npm", ["install", "--omit=dev"], {
+  const npmArgs = [
+    "install",
+    "--omit=dev",
+    "--no-audit",
+    "--no-fund",
+    "--cache",
+    path.join(tempRoot, "npm-cache"),
+  ];
+
+  if (process.platform === "win32") {
+    execFileSync(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", `npm ${npmArgs.join(" ")}`], {
+      cwd: runtimeRoot,
+      stdio: "inherit",
+    });
+    return;
+  }
+
+  execFileSync("npm", npmArgs, {
     cwd: runtimeRoot,
     stdio: "inherit",
   });
@@ -141,15 +158,9 @@ async function downloadFile(url, destination) {
 }
 
 async function extractZip(archivePath, destinationDir) {
-  execFileSync(
-    "powershell",
-    [
-      "-NoProfile",
-      "-Command",
-      `Expand-Archive -LiteralPath '${escapeForSingleQuotedPowerShell(archivePath)}' -DestinationPath '${escapeForSingleQuotedPowerShell(destinationDir)}' -Force`,
-    ],
-    { stdio: "inherit" },
-  );
+  execFileSync("tar", ["-xf", archivePath, "-C", destinationDir], {
+    stdio: "inherit",
+  });
 }
 
 async function installExtractedFolder(searchRoot, folderPrefix, targetDir) {
@@ -189,10 +200,6 @@ function cleanupExtractedDirectories(searchRoot, folderPrefix, keepDir) {
 
     rmSync(fullPath, { recursive: true, force: true });
   }
-}
-
-function escapeForSingleQuotedPowerShell(value) {
-  return value.replace(/'/g, "''");
 }
 
 main().catch((error) => {
