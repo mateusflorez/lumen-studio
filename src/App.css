@@ -621,6 +621,37 @@
   overflow-wrap: anywhere;
 }
 
+.subject-environment {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.subject-environment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.subject-environment-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.subject-environment-item {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.subject-environment-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .subject-detail-flags {
   display: flex;
   flex-wrap: wrap;

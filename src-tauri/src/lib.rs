@@ -103,6 +103,21 @@ struct GlobalSearchResult {
     snippet: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GenerationEnvironmentStatus {
+    tool_root: Option<String>,
+    marp_available: bool,
+    markdown_it_available: bool,
+    node_available: bool,
+    browser_available: bool,
+    browser_path: Option<String>,
+    lesson_ready: bool,
+    activity_ready: bool,
+    lesson_message: String,
+    activity_message: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ContentKind {
     Lesson,
@@ -320,6 +335,14 @@ fn search_workspace_content(
     results.truncate(40);
 
     Ok(results)
+}
+
+#[tauri::command]
+fn get_generation_environment_status(
+    workspace_path: String,
+) -> Result<GenerationEnvironmentStatus, String> {
+    let root = resolve_workspace_root(&workspace_path)?;
+    Ok(inspect_generation_environment(&root))
 }
 
 #[tauri::command]
@@ -685,6 +708,7 @@ async fn generate_content_output(
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let root = resolve_workspace_root(&workspace_path)?;
+        let environment = inspect_generation_environment(&root);
         let tool_root = resolve_generation_tool_root(&root)?;
         let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
         let content_path = resolve_content_path(&subject_path, &relative_path)?;
@@ -694,12 +718,14 @@ async fn generate_content_output(
             .ok_or_else(|| "Nome de arquivo inválido.".to_string())?;
 
         if relative_path.starts_with("aulas/") {
-            generate_lesson_output(&tool_root, &content_path, file_name)?;
+            generate_lesson_output(&tool_root, &content_path, file_name)
+                .map_err(|error| format!("{}\n\n{}", error, environment.lesson_message))?;
             return Ok(());
         }
 
         if relative_path.starts_with("atividades/") {
-            generate_activity_output(&tool_root, &subject_path, &content_path, file_name)?;
+            generate_activity_output(&tool_root, &subject_path, &content_path, file_name)
+                .map_err(|error| format!("{}\n\n{}", error, environment.activity_message))?;
             return Ok(());
         }
 
@@ -1497,6 +1523,67 @@ fn normalize_search_text(value: &str) -> String {
         });
     }
     normalized
+}
+
+fn inspect_generation_environment(workspace_root: &Path) -> GenerationEnvironmentStatus {
+    let tool_root = resolve_generation_tool_root(workspace_root).ok();
+    let marp_available = tool_root
+        .as_ref()
+        .map(|root| root.join("node_modules").join(".bin").join("marp.cmd").is_file())
+        .unwrap_or(false);
+    let markdown_it_available = tool_root
+        .as_ref()
+        .map(|root| root.join("node_modules").join("markdown-it").exists())
+        .unwrap_or(false);
+    let node_available = Command::new("node")
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+    let browser_path = detect_browser_path();
+    let browser_available = browser_path.is_some();
+    let lesson_ready = marp_available;
+    let activity_ready = markdown_it_available && node_available && browser_available;
+    let tool_root_label = tool_root
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string());
+    let browser_path_label = browser_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string());
+
+    let lesson_message = if lesson_ready {
+        format!(
+            "Slides prontos para gerar. Marp encontrado em {}.",
+            tool_root_label.as_deref().unwrap_or("node_modules detectado")
+        )
+    } else if tool_root_label.is_none() {
+        "Slides indisponíveis. Não encontrei node_modules com Marp e markdown-it no projeto base do SENAI. Instale as dependências do projeto com npm install.".to_string()
+    } else {
+        "Slides indisponíveis. O Marp CLI não foi encontrado em node_modules/.bin/marp.cmd. Rode npm install no projeto base do SENAI.".to_string()
+    };
+
+    let activity_message = match (markdown_it_available, node_available, browser_available) {
+        (true, true, true) => format!(
+            "PDF pronto para gerar. Navegador detectado em {}.",
+            browser_path_label.as_deref().unwrap_or("navegador compatível")
+        ),
+        (false, _, _) => "PDF indisponível. O pacote markdown-it não foi encontrado no projeto base do SENAI. Rode npm install.".to_string(),
+        (_, false, _) => "PDF indisponível. O comando node não está disponível neste ambiente. Instale o Node.js 20+ ou ajuste o PATH.".to_string(),
+        (_, _, false) => "PDF indisponível. Não encontrei Chrome ou Edge instalado neste computador.".to_string(),
+    };
+
+    GenerationEnvironmentStatus {
+        tool_root: tool_root_label,
+        marp_available,
+        markdown_it_available,
+        node_available,
+        browser_available,
+        browser_path: browser_path_label,
+        lesson_ready,
+        activity_ready,
+        lesson_message,
+        activity_message,
+    }
 }
 
 fn capitalize(value: &str) -> String {
@@ -2598,6 +2685,7 @@ pub fn run() {
             list_subjects,
             get_subject_detail,
             search_workspace_content,
+            get_generation_environment_status,
             read_content_file,
             save_content_file,
             get_content_file_snapshot,

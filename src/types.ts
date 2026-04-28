@@ -71,6 +71,19 @@ export type GlobalSearchResult = {
   snippet: string;
 };
 
+export type GenerationEnvironmentStatus = {
+  toolRoot: string | null;
+  marpAvailable: boolean;
+  markdownItAvailable: boolean;
+  nodeAvailable: boolean;
+  browserAvailable: boolean;
+  browserPath: string | null;
+  lessonReady: boolean;
+  activityReady: boolean;
+  lessonMessage: string;
+  activityMessage: string;
+};
+
 export type AssetSettingsState = {
   appDataDir: string;
   fallbackDir: string | null;

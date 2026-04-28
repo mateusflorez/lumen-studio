@@ -254,12 +254,18 @@ A migração é incremental: o Studio começa lendo arquivos existentes no prime
 - [ ] Melhorar o fluxo de conflito de edição externa com opções de recarregar, comparar e manter alterações locais
 - [x] Criar visão geral da disciplina com progresso, itens sem output e itens desatualizados
 - [x] Adicionar busca global por disciplinas, aulas, atividades e conteúdo interno dos arquivos
-- [ ] Melhorar diagnóstico de ambiente quando dependências de geração não estiverem instaladas
+- [x] Melhorar diagnóstico de ambiente quando dependências de geração não estiverem instaladas
 - [ ] Adicionar histórico simples ou backup automático por arquivo
 
 ### Fase 7 — Exportação e distribuição
 - [ ] Criar exportação completa da disciplina em `.zip` com slides, PDFs e arquivos-fonte
 - [ ] Criar empacotamento de distribuição para Windows com instalador pronto para uso em outros computadores
+  Estratégia recomendada para Windows:
+  empacotar no instalador o runtime de geração usado pelo app, incluindo as dependências Node necessárias para Marp/HTML e um navegador Chromium embarcado para PDF, eliminando a exigência de Node, Chrome/Edge e setup manual na máquina final.
+  Motivo:
+  o Lumen Studio é um app desktop para uso docente e precisa funcionar de forma previsível offline e em computadores institucionais; depender de instalações externas aumenta falha operacional, suporte e inconsistência entre máquinas.
+  Critério de pronto:
+  uma instalação limpa do app em Windows deve conseguir gerar `.pptx` e `.pdf` sem instalar nada adicional fora do instalador do próprio sistema.
 
 ### Fase 8 — Atualização do aplicativo
 - [ ] Implementar verificação automática de atualizações no Windows

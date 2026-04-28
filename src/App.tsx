@@ -15,6 +15,7 @@ import type {
   CreateContentItemResult,
   RenameContentItemResult,
   GlobalSearchResult,
+  GenerationEnvironmentStatus,
   SaveState,
   DeleteTarget,
   AssetSettingsState,
@@ -69,6 +70,8 @@ function App() {
   const [commandQuery, setCommandQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [generationEnvironment, setGenerationEnvironment] = useState<GenerationEnvironmentStatus | null>(null);
+  const [generationEnvironmentLoading, setGenerationEnvironmentLoading] = useState(false);
   const [creatingTemplateSubject, setCreatingTemplateSubject] = useState(false);
   const [createSubjectOpen, setCreateSubjectOpen] = useState(false);
   const [editSubjectOpen, setEditSubjectOpen] = useState(false);
@@ -198,6 +201,26 @@ function App() {
     }
   }
 
+  async function refreshGenerationEnvironment(nextWorkspacePath: string) {
+    if (!nextWorkspacePath) {
+      setGenerationEnvironment(null);
+      setGenerationEnvironmentLoading(false);
+      return;
+    }
+
+    setGenerationEnvironmentLoading(true);
+    try {
+      const status = await invoke<GenerationEnvironmentStatus>("get_generation_environment_status", {
+        workspacePath: nextWorkspacePath,
+      });
+      setGenerationEnvironment(status);
+    } catch {
+      setGenerationEnvironment(null);
+    } finally {
+      setGenerationEnvironmentLoading(false);
+    }
+  }
+
   async function refreshEditorDocument(
     nextWorkspacePath: string,
     subjectSlug: string,
@@ -263,6 +286,10 @@ function App() {
 
   useEffect(() => {
     void refreshSubjects(workspacePath);
+  }, [workspacePath]);
+
+  useEffect(() => {
+    void refreshGenerationEnvironment(workspacePath);
   }, [workspacePath]);
 
   useEffect(() => {
@@ -1035,6 +1062,8 @@ function App() {
             processingOutputPath={processingOutputPath}
             generationBusy={generationBusy}
             generatingAll={generatingAll}
+            generationEnvironment={generationEnvironment}
+            generationEnvironmentLoading={generationEnvironmentLoading}
             onEditSubject={() => setEditSubjectOpen(true)}
             onGenerateAll={() => void handleGenerateAllContent()}
             onSelectContent={setSelectedContentPath}
