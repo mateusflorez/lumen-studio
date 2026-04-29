@@ -106,22 +106,41 @@ jobs:
 
       - name: Fetch release and build latest.json
         run: |
+          set -euo pipefail
           TAG="${{ github.ref_name }}"
 
-          RELEASE=$(curl -s \
+          RELEASE=$(curl -sf \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
 
+          echo "=== Assets disponíveis ==="
+          echo "$RELEASE" | jq -r '.assets[].name'
+          echo "=========================="
+
+          # Aceita tanto _x64-setup.exe (NSIS) quanto _x64_en-US.msi
           INSTALLER_URL=$(echo "$RELEASE" | jq -r \
-            '.assets[] | select(.name | test("x64-setup\\.exe$")) | .browser_download_url')
+            '[.assets[] | select(.name | test("\\.(exe|msi)$") and (test("\\.sig$") | not))] | first | .browser_download_url')
 
           SIG_URL=$(echo "$RELEASE" | jq -r \
-            '.assets[] | select(.name | test("x64-setup\\.exe\\.sig$")) | .browser_download_url')
+            '[.assets[] | select(.name | test("\\.(exe|msi)\\.sig$"))] | first | .browser_download_url')
 
-          SIGNATURE=$(curl -s "$SIG_URL")
+          echo "Installer URL: $INSTALLER_URL"
+          echo "Sig URL:       $SIG_URL"
+
+          if [ -z "$INSTALLER_URL" ] || [ "$INSTALLER_URL" = "null" ]; then
+            echo "ERRO: nenhum asset de instalador encontrado na release $TAG"
+            exit 1
+          fi
+
+          if [ -z "$SIG_URL" ] || [ "$SIG_URL" = "null" ]; then
+            echo "ERRO: nenhum asset .sig encontrado na release $TAG"
+            exit 1
+          fi
+
+          SIGNATURE=$(curl -sf "$SIG_URL")
           PUB_DATE=$(echo "$RELEASE" | jq -r '.published_at')
-          NOTES=$(echo "$RELEASE" | jq -r '.body')
+          NOTES=$(echo "$RELEASE" | jq -r '.body // ""')
           VERSION="${TAG#v}"
 
           jq -n \
@@ -142,7 +161,7 @@ jobs:
               }
             }' > pages/latest.json
 
-          echo "Generated latest.json for version $VERSION:"
+          echo "=== latest.json gerado ==="
           cat pages/latest.json
 
       - name: Commit and push latest.json
