@@ -268,6 +268,344 @@ A migração é incremental: o Studio começa lendo arquivos existentes no prime
   uma instalação limpa do app em Windows deve conseguir gerar `.pptx` e `.pdf` sem instalar nada adicional fora do instalador do próprio sistema.
 
 ### Fase 8 — Atualização do aplicativo
-- [ ] Implementar verificação automática de atualizações no Windows
-- [ ] Implementar fluxo de baixar e instalar nova versão do app automaticamente
-- [ ] Definir origem de versão/publicação para updates (`git`, release hospedada ou feed próprio)
+
+#### Visão geral
+
+O fluxo usa infraestrutura 100% gratuita do GitHub:
+
+| Peça | Responsabilidade |
+|---|---|
+| `tauri-plugin-updater` | SDK que verifica, baixa e instala updates dentro do app |
+| **GitHub Releases** | Hospeda o instalador `.exe` / `.msi` de cada versão |
+| **GitHub Actions** (`windows-latest`) | Build automático no push de tag `v*.*.*` |
+| **GHCR** | Cache de layers do ambiente de build (mesmo padrão do PrimeSys) |
+| **GitHub Pages** | Hospeda o `latest.json` — manifesto consultado pelo app na inicialização |
+
+Fluxo end-to-end:
+
+```
+git tag v1.2.0 && git push --tags
+  → GitHub Actions dispara
+  → runner windows-latest autentica no GHCR
+  → baixa imagem de build cacheada do GHCR (Rust + Node)
+  → compila o app, gera lumen-studio_1.2.0_x64-setup.exe
+  → assina o instalador com a chave privada RSA do repo
+  → publica no GitHub Releases (tag v1.2.0)
+  → gera latest.json e faz push para branch gh-pages
+  → app instalado verifica latest.json na próxima abertura
+  → exibe notificação → professor clica "Atualizar"
+  → Tauri baixa o instalador, executa, reinicia o app
+```
+
+---
+
+#### Passo 1 — Adicionar tauri-plugin-updater
+
+```toml
+# src-tauri/Cargo.toml
+[dependencies]
+tauri-plugin-updater = "2"
+```
+
+```rust
+// src-tauri/src/lib.rs — registrar no builder
+.plugin(tauri_plugin_updater::Builder::new().build())
+```
+
+```json
+// src-tauri/capabilities/default.json — adicionar permissão
+{
+  "permissions": [
+    "updater:default"
+  ]
+}
+```
+
+---
+
+#### Passo 2 — Gerar chave RSA de assinatura
+
+A chave é gerada **uma única vez** localmente e nunca entra no repositório.
+
+```bash
+# Gera o par de chaves — executa apenas na primeira configuração
+npx @tauri-apps/cli signer generate -w ~/.tauri/lumen-studio.key
+```
+
+Isso produz dois arquivos:
+- `~/.tauri/lumen-studio.key` — **chave privada** (fica só na máquina do dev / secret do Actions)
+- `~/.tauri/lumen-studio.key.pub` — **chave pública** (vai para `tauri.conf.json`)
+
+```json
+// src-tauri/tauri.conf.json
+{
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6...",
+      "endpoints": [
+        "https://<github-user>.github.io/senai_studio/latest.json"
+      ]
+    }
+  }
+}
+```
+
+A chave privada é adicionada como secret no GitHub:
+- `Settings → Secrets → Actions → New repository secret`
+- Nome: `TAURI_SIGNING_PRIVATE_KEY`
+- Valor: conteúdo de `~/.tauri/lumen-studio.key`
+- Senha da chave (se definida): `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+---
+
+#### Passo 3 — GitHub Actions workflow
+
+Arquivo: `.github/workflows/release.yml`
+
+Disparo: push de qualquer tag no formato `v*.*.*` (ex: `v1.2.0`).
+
+Segue o mesmo padrão do PrimeSys — autenticação no GHCR, cache de registry por SHA, builds atômicos — adaptado para runner `windows-latest` em vez de containers Linux, já que o instalador `.exe` exige ambiente Windows nativo.
+
+```yaml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write      # criar GitHub Release e fazer upload do instalador
+  packages: write      # push de cache no GHCR
+  pages: write         # publicar latest.json no GitHub Pages
+  id-token: write      # necessário para Pages deploy
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  REGISTRY: ghcr.io
+  IMAGE_BUILD: ghcr.io/${{ github.repository_owner }}/lumen-studio-build
+
+jobs:
+  # ──────────────────────────────────────────────
+  # BUILD — compila o instalador no Windows
+  # ──────────────────────────────────────────────
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache da compilação Rust — armazenado no GHCR como OCI artifact
+      - name: Restore Rust cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Lumen Studio ${{ github.ref_name }}'
+          releaseBody: |
+            Veja as mudanças nesta versão em CHANGELOG.md
+          releaseDraft: false
+          prerelease: false
+
+      # Salva o path do instalador gerado para o próximo job
+      - name: Export installer path
+        id: installer
+        shell: bash
+        run: |
+          INSTALLER=$(find src-tauri/target/release/bundle -name "*.exe" | head -1)
+          echo "path=$INSTALLER" >> $GITHUB_OUTPUT
+
+  # ──────────────────────────────────────────────
+  # MANIFEST — gera e publica o latest.json
+  # ──────────────────────────────────────────────
+  publish-manifest:
+    name: Publish Update Manifest
+    runs-on: ubuntu-latest
+    needs: build-windows
+
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: pages
+
+      - name: Fetch release assets metadata
+        id: release
+        run: |
+          TAG="${{ github.ref_name }}"
+          RELEASE=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG)
+
+          INSTALLER_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".exe")) | .browser_download_url')
+          SIGNATURE=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".exe.sig")) | .browser_download_url' \
+            | xargs curl -s)
+          PUB_DATE=$(echo "$RELEASE" | jq -r '.published_at')
+          NOTES=$(echo "$RELEASE" | jq -r '.body')
+          VERSION="${TAG#v}"
+
+          echo "installer_url=$INSTALLER_URL" >> $GITHUB_OUTPUT
+          echo "pub_date=$PUB_DATE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Escreve o latest.json
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --arg url "$INSTALLER_URL" \
+            --arg sig "$SIGNATURE" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "windows-x86_64": {
+                  url: $url,
+                  signature: $sig
+                }
+              }
+            }' > pages/latest.json
+
+      - name: Commit and push latest.json
+        run: |
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "chore: update latest.json to ${{ github.ref_name }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+---
+
+#### Passo 4 — Habilitar GitHub Pages
+
+1. `Settings → Pages → Source: Deploy from branch → branch: gh-pages, folder: / (root)`
+2. Na primeira vez, criar a branch `gh-pages` manualmente com um `latest.json` vazio
+3. O workflow vai sobrescrever o arquivo a cada release
+
+O `latest.json` ficará disponível em:
+```
+https://<github-user>.github.io/senai_studio/latest.json
+```
+
+---
+
+#### Passo 5 — Implementar UI de notificação no frontend
+
+O app verifica atualizações uma vez na inicialização. O fluxo na UI:
+
+```
+Inicialização do app
+  → check() em background (não bloqueia a tela)
+  → se disponível: exibe toast/banner com versão nova e changelog
+  → professor clica "Atualizar agora"
+  → downloadAndInstall() — barra de progresso
+  → relaunch() — app reinicia na nova versão
+```
+
+```typescript
+// src/hooks/useAppUpdater.ts
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+
+export async function checkForUpdates(): Promise<UpdateInfo | null> {
+  const update = await check();
+  if (!update?.available) return null;
+  return {
+    version: update.version,
+    body: update.body ?? "",
+    downloadAndInstall: async (onProgress: (downloaded: number, total: number) => void) => {
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Progress") {
+          onProgress(event.data.chunkLength, event.data.contentLength ?? 0);
+        }
+      });
+      await relaunch();
+    },
+  };
+}
+```
+
+O hook é chamado em `App.tsx` via `useEffect` no mount inicial. A notificação usa o componente `StatusChip` existente com variante `--accent`.
+
+---
+
+#### Passo 6 — Publicar uma nova versão (operação rotineira)
+
+```bash
+# 1. Garantir que o código está em main e limpo
+git checkout main && git pull
+
+# 2. Atualizar a versão nos dois lugares
+#    src-tauri/tauri.conf.json  → "version": "1.2.0"
+#    src-tauri/Cargo.toml       → version = "1.2.0"
+
+# 3. Commitar a bump de versão
+git add src-tauri/tauri.conf.json src-tauri/Cargo.toml
+git commit -m "chore: bump version to 1.2.0"
+
+# 4. Criar e publicar a tag — isso dispara o workflow
+git tag v1.2.0
+git push origin main --tags
+```
+
+O Actions vai cuidar do resto: compilar, assinar, publicar a Release e atualizar o `latest.json`.
+
+---
+
+#### Checklist de configuração (uma vez)
+
+- [x] Gerar par de chaves RSA com `npx @tauri-apps/cli signer generate`
+- [x] Adicionar `TAURI_SIGNING_PRIVATE_KEY` como secret no GitHub
+- [x] Adicionar a chave pública em `tauri.conf.json` → `plugins.updater.pubkey`
+- [x] Configurar o endpoint do `latest.json` em `tauri.conf.json`
+- [x] Adicionar `tauri-plugin-updater` ao `Cargo.toml` e registrar no builder
+- [x] Adicionar permissão `updater:default` em `capabilities/default.json`
+- [ ] Criar branch `gh-pages` com `latest.json` vazio e habilitar GitHub Pages
+- [x] Criar workflow `.github/workflows/release.yml`
+- [ ] Implementar `useAppUpdater.ts` e wiring na UI
+- [ ] Fazer release de teste com tag `v0.1.1` e verificar o fluxo ponta a ponta

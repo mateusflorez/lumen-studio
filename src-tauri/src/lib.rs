@@ -2871,6 +2871,7 @@ pub fn run() {
             window.set_icon(tauri::include_image!("icons/32x32.png"))?;
             Ok(())
         })
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![

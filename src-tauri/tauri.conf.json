@@ -21,6 +21,14 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZFRUY1RDlDMjI1MzBFQTQKUldTa0RsTWluRjN2YnJ2TlNHTE4yTmFpemxRdW8zTFZTM3pZU0pJamMxUlNneGk1dzNsMGVOdlcK",
+      "endpoints": [
+        "https://mateusflorez.github.io/senai-studio/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
