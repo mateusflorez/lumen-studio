@@ -8,7 +8,16 @@
       "Bash(grep -iE \"\\\\.\\(env|key|pem|p12|pfx|secret\\)$|\\\\.env\\\\.\")",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(node -e \"require\\('sharp'\\)\")",
-      "Bash(/c/Program Files/Inkscape/bin/inkscape.exe *)"
+      "Bash(/c/Program Files/Inkscape/bin/inkscape.exe *)",
+      "Bash(curl -sf \"https://mateusflorez.github.io/lumen-studio/latest.json\")",
+      "Bash(curl -sf \"https://mateusflorez.github.io/senai-studio/latest.json\")",
+      "Read(//c/Users/bombe/.config/gh/**)",
+      "Bash(curl -sf -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(gh api *)",
+      "Bash(curl -sf \"https://api.github.com/repos/mateusflorez/lumen-studio/releases/latest\")",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); [print\\(a['name'], a['browser_download_url']\\) for a in r['assets']]\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const r=JSON.parse\\(d\\); r.assets.forEach\\(a=>console.log\\(a.name\\)\\)\")",
+      "Bash(node -e \"const r=require\\('/tmp/release.json'\\); r.assets.forEach\\(a=>console.log\\(a.name\\)\\)\")"
     ]
   }
 }

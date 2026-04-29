@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag da release para republicar o latest.json (ex: v1.2.2)'
+        required: true
+        type: string
 
 concurrency:
   group: release-${{ github.ref }}
@@ -95,7 +101,7 @@ jobs:
   publish-manifest:
     name: Publish Update Manifest
     runs-on: ubuntu-latest
-    needs: build-windows
+    needs: ${{ github.event_name == 'workflow_dispatch' && fromJSON('[]') || fromJSON('["build-windows"]') }}
 
     steps:
       - name: Checkout gh-pages branch
@@ -104,10 +110,10 @@ jobs:
           ref: gh-pages
           path: pages
 
-      - name: Fetch release and build latest.json
+      - name: Fetch latest.json from release asset
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_name }}"
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
 
           RELEASE=$(curl -sf \
             -H "Authorization: Bearer $GH_TOKEN" \
@@ -118,50 +124,22 @@ jobs:
           echo "$RELEASE" | jq -r '.assets[].name'
           echo "=========================="
 
-          # Aceita tanto _x64-setup.exe (NSIS) quanto _x64_en-US.msi
-          INSTALLER_URL=$(echo "$RELEASE" | jq -r \
-            '[.assets[] | select(.name | test("\\.(exe|msi)$") and (test("\\.sig$") | not))] | first | .browser_download_url')
+          # O tauri-action já gera latest.json com assinaturas corretas — usa diretamente
+          MANIFEST_URL=$(echo "$RELEASE" | jq -r \
+            '[.assets[] | select(.name == "latest.json")] | first | .browser_download_url')
 
-          SIG_URL=$(echo "$RELEASE" | jq -r \
-            '[.assets[] | select(.name | test("\\.(exe|msi)\\.sig$"))] | first | .browser_download_url')
-
-          echo "Installer URL: $INSTALLER_URL"
-          echo "Sig URL:       $SIG_URL"
-
-          if [ -z "$INSTALLER_URL" ] || [ "$INSTALLER_URL" = "null" ]; then
-            echo "ERRO: nenhum asset de instalador encontrado na release $TAG"
+          if [ -z "$MANIFEST_URL" ] || [ "$MANIFEST_URL" = "null" ]; then
+            echo "ERRO: latest.json não encontrado nos assets da release $TAG"
             exit 1
           fi
 
-          if [ -z "$SIG_URL" ] || [ "$SIG_URL" = "null" ]; then
-            echo "ERRO: nenhum asset .sig encontrado na release $TAG"
-            exit 1
-          fi
+          echo "Manifest URL: $MANIFEST_URL"
 
-          SIGNATURE=$(curl -sf "$SIG_URL")
-          PUB_DATE=$(echo "$RELEASE" | jq -r '.published_at')
-          NOTES=$(echo "$RELEASE" | jq -r '.body // ""')
-          VERSION="${TAG#v}"
+          curl -sfL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "$MANIFEST_URL" > pages/latest.json
 
-          jq -n \
-            --arg version  "$VERSION" \
-            --arg notes    "$NOTES" \
-            --arg pub_date "$PUB_DATE" \
-            --arg url      "$INSTALLER_URL" \
-            --arg sig      "$SIGNATURE" \
-            '{
-              version:  $version,
-              notes:    $notes,
-              pub_date: $pub_date,
-              platforms: {
-                "windows-x86_64": {
-                  url:       $url,
-                  signature: $sig
-                }
-              }
-            }' > pages/latest.json
-
-          echo "=== latest.json gerado ==="
+          echo "=== latest.json obtido ==="
           cat pages/latest.json
 
       - name: Commit and push latest.json
@@ -171,7 +149,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add latest.json
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "chore: update latest.json → ${{ github.ref_name }}"
+          git commit -m "chore: update latest.json → ${{ github.event.inputs.tag || github.ref_name }}"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
