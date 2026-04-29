@@ -5,7 +5,8 @@
       "Bash(npx tsc *)",
       "Bash(npm install *)",
       "Bash(gh run *)",
-      "Bash(grep -iE \"\\\\.\\(env|key|pem|p12|pfx|secret\\)$|\\\\.env\\\\.\")"
+      "Bash(grep -iE \"\\\\.\\(env|key|pem|p12|pfx|secret\\)$|\\\\.env\\\\.\")",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
