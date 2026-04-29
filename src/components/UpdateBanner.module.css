@@ -3,6 +3,7 @@
   align-items: center;
   gap: 1rem;
   padding: 0.5rem 1.25rem;
+  margin-bottom: 0.75rem;
   background: var(--accent-dim);
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   font-family: var(--font-ui);
