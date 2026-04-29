@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
+import splashLockup from "../lumen_studio_lockup.svg";
 
 import type {
   SubjectSummary,
@@ -45,6 +46,7 @@ type GenerationProgressState = {
 };
 
 function App() {
+  const [bootSplashState, setBootSplashState] = useState<"visible" | "hiding" | "hidden">("visible");
   const [activeSection, setActiveSection] = useState<"home" | "context" | "plan" | "settings">("home");
   const [workspacePath, setWorkspacePath] = useState(
     () => window.localStorage.getItem(workspaceStorageKey) ?? "",
@@ -118,6 +120,25 @@ function App() {
   useEffect(() => {
     editorContentRef.current = editorContent;
   }, [editorContent]);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fadeDelayMs = prefersReducedMotion ? 550 : 2550;
+    const hideDelayMs = prefersReducedMotion ? 800 : 4550;
+
+    const fadeTimer = window.setTimeout(() => {
+      setBootSplashState("hiding");
+    }, fadeDelayMs);
+
+    const hideTimer = window.setTimeout(() => {
+      setBootSplashState("hidden");
+    }, hideDelayMs);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
 
   async function refreshSubjects(nextWorkspacePath: string) {
     if (!nextWorkspacePath) {
@@ -877,8 +898,24 @@ function App() {
   }
 
   return (
-    <main className="studio-shell">
-      <aside className="studio-sidebar" aria-label="Navegação principal">
+    <>
+      {bootSplashState !== "hidden" ? (
+        <div
+          className={`boot-splash${bootSplashState === "hiding" ? " boot-splash--hiding" : ""}`}
+          aria-hidden="true"
+        >
+          <div className="boot-splash__glow" />
+          <img
+            className="boot-splash__logo"
+            src={splashLockup}
+            alt=""
+            draggable={false}
+          />
+        </div>
+      ) : null}
+
+      <main className="studio-shell">
+        <aside className="studio-sidebar" aria-label="Navegação principal">
         <nav className="sidebar-icons">
           <button
             type="button"
@@ -924,9 +961,9 @@ function App() {
             <SettingsIcon />
           </button>
         </nav>
-      </aside>
+        </aside>
 
-      <section className="studio-stage">
+        <section className="studio-stage">
         {!updateDismissed && (
           <UpdateBanner
             status={updateStatus}
@@ -1069,9 +1106,9 @@ function App() {
             onPreviewContent={(item) => setPreviewItem(item)}
           />
         )}
-      </section>
+        </section>
 
-      {createSubjectOpen ? (
+        {createSubjectOpen ? (
         <CreateSubjectModal
           onClose={() => setCreateSubjectOpen(false)}
           onConfirm={async (name, color) => {
@@ -1095,9 +1132,9 @@ function App() {
             }
           }}
         />
-      ) : null}
+        ) : null}
 
-      {createLessonOpen && selectedSubjectSlug ? (
+        {createLessonOpen && selectedSubjectSlug ? (
         <CreateContentModal
           kind="aula"
           existingItems={selectedSubject?.lessons ?? []}
@@ -1118,9 +1155,9 @@ function App() {
             }
           }}
         />
-      ) : null}
+        ) : null}
 
-      {editSubjectOpen && selectedSubjectSlug && selectedSubject ? (
+        {editSubjectOpen && selectedSubjectSlug && selectedSubject ? (
         <CreateSubjectModal
           title="Configurar disciplina"
           submitLabel="Salvar disciplina"
@@ -1145,9 +1182,9 @@ function App() {
             }
           }}
         />
-      ) : null}
+        ) : null}
 
-      {createActivityOpen && selectedSubjectSlug ? (
+        {createActivityOpen && selectedSubjectSlug ? (
         <CreateContentModal
           kind="atividade"
           existingItems={selectedSubject?.activities ?? []}
@@ -1168,44 +1205,44 @@ function App() {
             }
           }}
         />
-      ) : null}
+        ) : null}
 
-      {renameTarget ? (
+        {renameTarget ? (
         <RenameContentModal
           item={renameTarget}
           onClose={() => setRenameTarget(null)}
           onConfirm={handleRenameContent}
         />
-      ) : null}
+        ) : null}
 
-      {deleteTarget ? (
+        {deleteTarget ? (
         <DeleteModal
           target={deleteTarget}
           deleting={deleting}
           onClose={() => { if (!deleting) setDeleteTarget(null); }}
           onConfirm={() => void handleDeleteConfirmed()}
         />
-      ) : null}
+        ) : null}
 
-      {previewItem && selectedSubjectSlug ? (
+        {previewItem && selectedSubjectSlug ? (
         <PreviewModal
           workspacePath={workspacePath}
           subjectSlug={selectedSubjectSlug}
           item={previewItem}
           onClose={() => setPreviewItem(null)}
         />
-      ) : null}
+        ) : null}
 
-      {commandPaletteOpen ? (
+        {commandPaletteOpen ? (
         <CommandPalette
           query={commandQuery}
           onQueryChange={setCommandQuery}
           actions={visibleCommandActions}
           onClose={() => setCommandPaletteOpen(false)}
         />
-      ) : null}
+        ) : null}
 
-      {generationProgress ? (
+        {generationProgress ? (
         <div className="modal-backdrop">
           <section
             className="modal-card generation-progress-card"
@@ -1249,8 +1286,9 @@ function App() {
             </div>
           </section>
         </div>
-      ) : null}
-    </main>
+        ) : null}
+      </main>
+    </>
   );
 }
 

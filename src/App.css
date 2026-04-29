@@ -1,3 +1,79 @@
+.boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 185, 56, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--bg-base);
+  opacity: 1;
+  transition:
+    opacity 1800ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 1800ms linear;
+}
+
+.boot-splash--hiding {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.boot-splash__glow {
+  position: absolute;
+  width: min(58vw, 38rem);
+  aspect-ratio: 1;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 185, 56, 0.16), transparent 68%);
+  transform: translate(-46%, -44%);
+  filter: blur(18px);
+  animation: boot-splash-glow-in 2200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.boot-splash__logo {
+  position: relative;
+  width: min(44vw, 28rem);
+  min-width: 15rem;
+  max-width: 85vw;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.35));
+  animation: boot-splash-logo-in 2200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes boot-splash-logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes boot-splash-glow-in {
+  from {
+    opacity: 0;
+    transform: translate(-46%, -44%) scale(0.82);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-46%, -44%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash,
+  .boot-splash__logo {
+    animation: none;
+    transition: opacity 120ms linear, visibility 120ms linear;
+  }
+}
+
 .studio-shell {
   min-height: 100vh;
   display: grid;
