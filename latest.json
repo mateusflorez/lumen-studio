@@ -1,1 +1,11 @@
-{}
+{
+  "version": "1.2.1",
+  "notes": "## O que mudou\n\nVeja o histórico de commits para detalhes desta versão.\n\n## Instalação\n\nBaixe o arquivo `_x64-setup.exe` abaixo e execute o instalador.",
+  "pub_date": "2026-04-29T14:07:01Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/mateusflorez/senai-studio/releases/download/v1.2.1/Lumen.Studio_1.2.1_x64-setup.exe",
+      "signature": ""
+    }
+  }
+}
