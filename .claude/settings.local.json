@@ -4,7 +4,8 @@
       "Bash(npm run *)",
       "Bash(npx tsc *)",
       "Bash(npm install *)",
-      "Bash(gh run *)"
+      "Bash(gh run *)",
+      "Bash(grep -iE \"\\\\.\\(env|key|pem|p12|pfx|secret\\)$|\\\\.env\\\\.\")"
     ]
   }
 }

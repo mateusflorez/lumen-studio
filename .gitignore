@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .tmp
+src-tauri/target
+src-tauri/gen
 src-tauri/resources/windows-runtime/node
 src-tauri/resources/windows-runtime/chromium
 src-tauri/resources/windows-runtime/node_modules
