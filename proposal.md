@@ -193,8 +193,8 @@ Isso requer expor o `absolutePath` do arquivo no tipo `EditableContentFile` (atu
 - [x] Implementar `resolveImagePaths(content, absoluteMdPath)` usando `convertFileSrc`
 
 ### MarkdownEditor (`src/components/MarkdownEditor.tsx`)
-- [ ] Converter para `forwardRef` com tipo `EditorHandle = { view: EditorView }`
-- [ ] Expor `viewRef.current` via `useImperativeHandle`
+- [x] Converter para `forwardRef` com tipo `EditorHandle = { view: EditorView }`
+- [x] Expor `viewRef.current` via `useImperativeHandle`
 
 ### FormattingToolbar (`src/components/FormattingToolbar.tsx`)
 - [ ] Criar componente recebendo `editorHandle` e `subjectSlug` / `workspacePath`
