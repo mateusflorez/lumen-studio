@@ -102,7 +102,9 @@ export const MarkdownEditor = forwardRef<
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  useImperativeHandle(ref, () => ({ view: viewRef.current! }), []);
+  useImperativeHandle(ref, () => ({
+    get view() { return viewRef.current!; },
+  }), []);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) {

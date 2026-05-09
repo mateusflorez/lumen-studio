@@ -197,16 +197,16 @@ Isso requer expor o `absolutePath` do arquivo no tipo `EditableContentFile` (atu
 - [x] Expor `viewRef.current` via `useImperativeHandle`
 
 ### FormattingToolbar (`src/components/FormattingToolbar.tsx`)
-- [ ] Criar componente recebendo `editorHandle` e `subjectSlug` / `workspacePath`
-- [ ] Botão H1 — insere `# ` (ou envolve seleção)
-- [ ] Botão H2 — insere `## `
-- [ ] Botão H3 — insere `### `
-- [ ] Botão Negrito — envolve com `**`
-- [ ] Botão Itálico — envolve com `*`
-- [ ] Botão Código inline — envolve com `` ` ``
-- [ ] Botão Tabela — insere template 3×2 com header
-- [ ] Botão Slide `---` — insere `\n---\n`
-- [ ] Botão Imagem — abre dialog, chama `copy_asset_to_subject`, insere `![](../assets/nome.png)`
+- [x] Criar componente recebendo `editorHandle` e `subjectSlug` / `workspacePath`
+- [x] Botão H1 — insere `# ` (ou envolve seleção)
+- [x] Botão H2 — insere `## `
+- [x] Botão H3 — insere `### `
+- [x] Botão Negrito — envolve com `**`
+- [x] Botão Itálico — envolve com `*`
+- [x] Botão Código inline — envolve com `` ` ``
+- [x] Botão Tabela — insere template 3×2 com header
+- [x] Botão Slide `---` — insere `\n---\n`
+- [x] Botão Imagem — abre dialog, chama `copy_asset_to_subject`, insere `![](../assets/nome.png)`
 
 ### EditorScreen (`src/screens/EditorScreen.tsx`)
 - [ ] Criar `editorHandleRef` e passar para `MarkdownEditor`
