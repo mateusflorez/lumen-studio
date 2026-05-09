@@ -215,11 +215,11 @@ Isso requer expor o `absolutePath` do arquivo no tipo `EditableContentFile` (atu
 - [x] Garantir que `subjectSlug` e `workspacePath` chegam à toolbar
 
 ### Estilos (`src/App.css`)
-- [ ] Estilo base da toolbar (fundo, borda inferior, altura)
-- [ ] Sticky behavior (`position: sticky; top: 0; z-index: 10`)
-- [ ] Botões compactos (32px, `var(--font-ui)`, uppercase)
-- [ ] Divisores verticais entre grupos
-- [ ] `overflow-x: auto` para viewport estreita
+- [x] Estilo base da toolbar (fundo, borda inferior, altura)
+- [x] Sticky behavior (`position: sticky; top: 0; z-index: 10`)
+- [x] Botões compactos (32px, `var(--font-ui)`, uppercase)
+- [x] Divisores verticais entre grupos
+- [x] `overflow-x: auto` para viewport estreita
 
 ### Testes Manuais
 - [ ] Imagem com caminho relativo renderiza no preview de aula (Marp)

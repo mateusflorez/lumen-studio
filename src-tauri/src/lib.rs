@@ -2261,6 +2261,68 @@ fn prepare_lesson_markdown_for_render(
     Ok(lines.join("\n"))
 }
 
+fn inline_relative_images(content: &str, source_dir: &Path) -> String {
+    let mut result = String::with_capacity(content.len());
+    let mut remaining = content;
+
+    while let Some(img_start) = remaining.find("![") {
+        result.push_str(&remaining[..img_start]);
+        remaining = &remaining[img_start + 2..];
+
+        let Some(alt_end) = remaining.find("](") else {
+            result.push_str("![");
+            result.push_str(remaining);
+            return result;
+        };
+
+        let alt = &remaining[..alt_end];
+        remaining = &remaining[alt_end + 2..];
+
+        let Some(src_end) = remaining.find(')') else {
+            result.push_str("![");
+            result.push_str(alt);
+            result.push_str("](");
+            result.push_str(remaining);
+            return result;
+        };
+
+        let src_part = &remaining[..src_end];
+        remaining = &remaining[src_end + 1..];
+
+        let (src, title) = match src_part.find(" \"") {
+            Some(i) => (src_part[..i].trim(), Some(&src_part[i..])),
+            None => (src_part.trim(), None),
+        };
+
+        let is_relative = !src.starts_with("http")
+            && !src.starts_with("data:")
+            && !src.starts_with("asset:")
+            && !std::path::Path::new(src).is_absolute();
+
+        if is_relative {
+            let abs = source_dir.join(src);
+            if let Ok(Some(data_url)) = asset_data_url(Some(&abs)) {
+                result.push_str("![");
+                result.push_str(alt);
+                result.push_str("](");
+                result.push_str(&data_url);
+                if let Some(t) = title { result.push_str(t); }
+                result.push(')');
+                continue;
+            }
+        }
+
+        result.push_str("![");
+        result.push_str(alt);
+        result.push_str("](");
+        result.push_str(src_part);
+        result.push(')');
+    }
+
+    result.push_str(remaining);
+    result
+}
+
 fn asset_data_url(path: Option<&Path>) -> Result<Option<String>, String> {
     let Some(path) = path else {
         return Ok(None);
@@ -2651,7 +2713,7 @@ fs.writeFileSync(outputPath, html, 'utf8');
 "#;
 
 #[tauri::command]
-fn render_marp_html(app: tauri::AppHandle, workspace_path: String, content: String) -> Result<String, String> {
+fn render_marp_html(app: tauri::AppHandle, workspace_path: String, content: String, content_absolute_path: String) -> Result<String, String> {
     let root = resolve_workspace_root(&workspace_path)?;
     let runtime = resolve_generation_runtime(Some(&app), &root)
         .map_err(|_| "Ferramentas de geração não encontradas. Prepare o runtime Windows ou instale as dependências no workspace.".to_string())?;
@@ -2671,6 +2733,10 @@ fn render_marp_html(app: tauri::AppHandle, workspace_path: String, content: Stri
     let temp_input = temp_dir.join(format!("lumen_preview_{}.md", timestamp));
     let temp_output = temp_dir.join(format!("lumen_preview_{}.html", timestamp));
 
+    let source_dir = std::path::Path::new(&content_absolute_path)
+        .parent()
+        .unwrap_or(std::path::Path::new(""));
+    let content = inline_relative_images(&content, source_dir);
     let prepared_content = prepare_lesson_markdown_for_render(&content, &assets)?;
     fs::write(&temp_input, &prepared_content)
         .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;
@@ -2706,7 +2772,7 @@ fn render_marp_html(app: tauri::AppHandle, workspace_path: String, content: Stri
 }
 
 #[tauri::command]
-fn render_activity_html(app: tauri::AppHandle, workspace_path: String, content: String) -> Result<String, String> {
+fn render_activity_html(app: tauri::AppHandle, workspace_path: String, content: String, content_absolute_path: String) -> Result<String, String> {
     let root = resolve_workspace_root(&workspace_path)?;
     let runtime = resolve_generation_runtime(Some(&app), &root)
         .map_err(|_| "Ferramentas de geração não encontradas. Prepare o runtime Windows ou instale as dependências no workspace.".to_string())?;
@@ -2730,6 +2796,11 @@ fn render_activity_html(app: tauri::AppHandle, workspace_path: String, content: 
 
     let temp_input = temp_dir.join(format!("lumen_activity_preview_{}.md", timestamp));
     let temp_output = temp_dir.join(format!("lumen_activity_preview_{}.html", timestamp));
+
+    let source_dir = std::path::Path::new(&content_absolute_path)
+        .parent()
+        .unwrap_or(std::path::Path::new(""));
+    let content = inline_relative_images(&content, source_dir);
 
     fs::write(&temp_input, &content)
         .map_err(|e| format!("Falha ao criar arquivo temporário: {}", e))?;

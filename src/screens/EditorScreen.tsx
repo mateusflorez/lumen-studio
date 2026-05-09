@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { EditableContentFile, ContentItem, SaveState } from "../types";
-import { saveStateClassName, saveStateLabel, statusGlyph, statusLabel, resolveImagePaths } from "../utils";
+import { saveStateClassName, saveStateLabel, statusGlyph, statusLabel } from "../utils";
 import { LoadingState, ErrorState } from "../components/FeedbackStates";
 import { MarkdownEditor } from "../components/MarkdownEditor";
 import type { EditorHandle } from "../components/MarkdownEditor";
@@ -48,9 +48,7 @@ export function EditorScreen({
   const canPreview = isLesson || isActivity;
   const previewVisible = showMarpPreview && canPreview;
 
-  const previewContent = editorDocument
-    ? resolveImagePaths(editorContent, editorDocument.absolutePath)
-    : editorContent;
+  const contentAbsolutePath = editorDocument?.absolutePath ?? "";
 
   return (
     <section className="editor-screen" aria-labelledby="editor-title">
@@ -127,9 +125,9 @@ export function EditorScreen({
           {previewVisible ? (
             <div className="marp-preview-container">
               {isLesson ? (
-                <MarpPreview workspacePath={workspacePath} content={previewContent} />
+                <MarpPreview workspacePath={workspacePath} content={editorContent} contentAbsolutePath={contentAbsolutePath} />
               ) : (
-                <ActivityPreview workspacePath={workspacePath} content={previewContent} />
+                <ActivityPreview workspacePath={workspacePath} content={editorContent} contentAbsolutePath={contentAbsolutePath} />
               )}
             </div>
           ) : null}
