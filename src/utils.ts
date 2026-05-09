@@ -1,3 +1,4 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ContentItem, SaveState } from "./types";
 
 export function flagClassName(isReady: boolean) {
@@ -64,6 +65,44 @@ export function describeError(cause: unknown, fallback: string) {
     if (typeof maybeMessage === "string" && maybeMessage.trim()) return maybeMessage;
   }
   return fallback;
+}
+
+// Resolves relative image paths in Markdown content to asset:// URIs that
+// the Tauri webview can load. Only rewrites paths that are clearly relative
+// (not http/https, data:, or already asset:// URIs).
+export function resolveImagePaths(content: string, absoluteMdPath: string): string {
+  // Normalize separators to forward slash for uniform processing.
+  const normalizedMdPath = absoluteMdPath.replace(/\\/g, "/");
+  // Directory containing the .md file (strip filename).
+  const mdDir = normalizedMdPath.substring(0, normalizedMdPath.lastIndexOf("/"));
+
+  return content.replace(/!\[([^\]]*)\]\(([^)\s]+)(\s+"[^"]*")?\)/g, (match, alt, src, title) => {
+    // Leave absolute URIs and data URLs untouched.
+    if (/^(https?:|asset:|data:)/i.test(src)) return match;
+
+    const resolvedPath = resolvePosixPath(mdDir, src);
+    const assetUri = convertFileSrc(resolvedPath);
+    const titlePart = title ? ` ${title}` : "";
+    return `![${alt}](${assetUri}${titlePart})`;
+  });
+}
+
+function resolvePosixPath(base: string, relative: string): string {
+  // If the relative path is actually absolute (starts with / or drive letter), use it directly.
+  if (/^(\/|[A-Za-z]:)/.test(relative)) return relative;
+
+  const parts = base.split("/");
+  const relParts = relative.split("/");
+
+  for (const part of relParts) {
+    if (part === "..") {
+      parts.pop();
+    } else if (part !== ".") {
+      parts.push(part);
+    }
+  }
+
+  return parts.join("/");
 }
 
 export function nextContentNumberLabel(items: ContentItem[] | undefined) {

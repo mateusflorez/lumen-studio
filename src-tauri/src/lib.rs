@@ -58,6 +58,7 @@ struct ContentItem {
 struct EditableContentFile {
     file: String,
     relative_path: String,
+    absolute_path: String,
     title: String,
     content: String,
     updated_at_ms: Option<u64>,
@@ -382,9 +383,15 @@ fn read_content_file(
         .to_string();
     let title = display_title(&content, &humanize_slug(&file_stem(&file)));
 
+    let absolute_path = content_path
+        .to_str()
+        .unwrap_or_default()
+        .to_string();
+
     Ok(EditableContentFile {
         file,
         relative_path,
+        absolute_path,
         title,
         content,
         updated_at_ms: fs::metadata(&content_path)
@@ -2863,6 +2870,79 @@ fn clear_asset_file(asset_kind: String) -> Result<AssetSettingsState, String> {
     get_asset_settings()
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CopyAssetResult {
+    relative_path: String,
+    file_name: String,
+}
+
+#[tauri::command]
+fn copy_asset_to_subject(
+    workspace_path: String,
+    subject_slug: String,
+    source_path: String,
+    content_relative_path: String,
+) -> Result<CopyAssetResult, String> {
+    let subject_path = resolve_subject_path(&workspace_path, &subject_slug)?;
+    let assets_dir = subject_path.join("assets");
+
+    fs::create_dir_all(&assets_dir)
+        .map_err(|e| format!("Não foi possível criar pasta assets: {}", e))?;
+
+    let source = std::path::Path::new(&source_path);
+    let original_stem = source
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("imagem");
+    let extension = source
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("png");
+
+    // Resolve collision: nome.png, nome_2.png, nome_3.png, …
+    let file_name = {
+        let candidate = format!("{}.{}", original_stem, extension);
+        if !assets_dir.join(&candidate).exists() {
+            candidate
+        } else {
+            let mut counter = 2u32;
+            loop {
+                let candidate = format!("{}_{}.{}", original_stem, counter, extension);
+                if !assets_dir.join(&candidate).exists() {
+                    break candidate;
+                }
+                counter += 1;
+            }
+        }
+    };
+
+    let dest = assets_dir.join(&file_name);
+
+    // Safety: dest must stay inside the workspace
+    let workspace = std::path::Path::new(&workspace_path);
+    if !dest.starts_with(workspace) {
+        return Err("Destino inválido: fora do workspace.".to_string());
+    }
+
+    fs::copy(&source_path, &dest)
+        .map_err(|e| format!("Não foi possível copiar o arquivo: {}", e))?;
+
+    // Build relative path from the .md file directory to assets/
+    // content_relative_path is like "aulas/aula_01_foo.md" → parent is "aulas/"
+    let content_dir_depth = std::path::Path::new(&content_relative_path)
+        .parent()
+        .map(|p| p.components().count())
+        .unwrap_or(0);
+    let prefix = "../".repeat(content_dir_depth);
+    let relative_path = format!("{}assets/{}", prefix, file_name);
+
+    Ok(CopyAssetResult {
+        relative_path,
+        file_name,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -2899,7 +2979,8 @@ pub fn run() {
             clear_asset_file,
             set_color_theme,
             render_marp_html,
-            render_activity_html
+            render_activity_html,
+            copy_asset_to_subject
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

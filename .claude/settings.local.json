@@ -17,7 +17,8 @@
       "Bash(curl -sf \"https://api.github.com/repos/mateusflorez/lumen-studio/releases/latest\")",
       "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); [print\\(a['name'], a['browser_download_url']\\) for a in r['assets']]\")",
       "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const r=JSON.parse\\(d\\); r.assets.forEach\\(a=>console.log\\(a.name\\)\\)\")",
-      "Bash(node -e \"const r=require\\('/tmp/release.json'\\); r.assets.forEach\\(a=>console.log\\(a.name\\)\\)\")"
+      "Bash(node -e \"const r=require\\('/tmp/release.json'\\); r.assets.forEach\\(a=>console.log\\(a.name\\)\\)\")",
+      "Bash(cargo build *)"
     ]
   }
 }

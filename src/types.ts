@@ -32,9 +32,15 @@ export type ContentItem = {
 export type EditableContentFile = {
   file: string;
   relativePath: string;
+  absolutePath: string;
   title: string;
   content: string;
   updatedAtMs: number | null;
+};
+
+export type CopyAssetResult = {
+  relativePath: string;
+  fileName: string;
 };
 
 export type SaveContentResult = {
