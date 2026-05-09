@@ -1002,6 +1002,7 @@ function App() {
         ) : viewingEditor ? (
           <EditorScreen
             workspacePath={workspacePath}
+            subjectSlug={selectedSubjectSlug ?? ""}
             backLabel={editorBackLabel}
             editorDocument={editorDocument}
             selectedContentItem={selectedContentItem}

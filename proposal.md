@@ -209,10 +209,10 @@ Isso requer expor o `absolutePath` do arquivo no tipo `EditableContentFile` (atu
 - [x] Botão Imagem — abre dialog, chama `copy_asset_to_subject`, insere `![](../assets/nome.png)`
 
 ### EditorScreen (`src/screens/EditorScreen.tsx`)
-- [ ] Criar `editorHandleRef` e passar para `MarkdownEditor`
-- [ ] Montar `<FormattingToolbar>` acima do `editor-surface`
-- [ ] Aplicar `resolveImagePaths` no conteúdo antes de passar para `MarpPreview` / `ActivityPreview`
-- [ ] Garantir que `subjectSlug` e `workspacePath` chegam à toolbar
+- [x] Criar `editorHandleRef` e passar para `MarkdownEditor`
+- [x] Montar `<FormattingToolbar>` acima do `editor-surface`
+- [x] Aplicar `resolveImagePaths` no conteúdo antes de passar para `MarpPreview` / `ActivityPreview`
+- [x] Garantir que `subjectSlug` e `workspacePath` chegam à toolbar
 
 ### Estilos (`src/App.css`)
 - [ ] Estilo base da toolbar (fundo, borda inferior, altura)

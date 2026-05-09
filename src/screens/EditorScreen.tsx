@@ -1,12 +1,16 @@
+import { useRef } from "react";
 import type { EditableContentFile, ContentItem, SaveState } from "../types";
-import { saveStateClassName, saveStateLabel, statusGlyph, statusLabel } from "../utils";
+import { saveStateClassName, saveStateLabel, statusGlyph, statusLabel, resolveImagePaths } from "../utils";
 import { LoadingState, ErrorState } from "../components/FeedbackStates";
 import { MarkdownEditor } from "../components/MarkdownEditor";
+import type { EditorHandle } from "../components/MarkdownEditor";
+import { FormattingToolbar } from "../components/FormattingToolbar";
 import { MarpPreview } from "../components/MarpPreview";
 import { ActivityPreview } from "../components/ActivityPreview";
 
 export function EditorScreen({
   workspacePath,
+  subjectSlug,
   backLabel,
   editorDocument,
   selectedContentItem,
@@ -22,6 +26,7 @@ export function EditorScreen({
   onToggleMarpPreview,
 }: {
   workspacePath: string;
+  subjectSlug: string;
   backLabel: string;
   editorDocument: EditableContentFile | null;
   selectedContentItem: ContentItem | null;
@@ -36,10 +41,16 @@ export function EditorScreen({
   onGoBack: () => void;
   onToggleMarpPreview: () => void;
 }) {
+  const editorHandleRef = useRef<EditorHandle | null>(null);
+
   const isLesson = Boolean(selectedContentItem?.relativePath.startsWith("aulas/"));
   const isActivity = Boolean(selectedContentItem?.relativePath.startsWith("atividades/"));
   const canPreview = isLesson || isActivity;
   const previewVisible = showMarpPreview && canPreview;
+
+  const previewContent = editorDocument
+    ? resolveImagePaths(editorContent, editorDocument.absolutePath)
+    : editorContent;
 
   return (
     <section className="editor-screen" aria-labelledby="editor-title">
@@ -98,8 +109,15 @@ export function EditorScreen({
       {!editorLoading && !editorError && editorDocument ? (
         <div className={`editor-body${previewVisible ? " editor-body--split" : ""}`}>
           <section className="editor-panel" aria-label="Editor Markdown">
+            <FormattingToolbar
+              editorHandle={editorHandleRef}
+              workspacePath={workspacePath}
+              subjectSlug={subjectSlug}
+              contentRelativePath={editorDocument.relativePath}
+            />
             <div className="editor-surface">
               <MarkdownEditor
+                ref={editorHandleRef}
                 key={editorDocument.relativePath}
                 value={editorContent}
                 onChange={onChange}
@@ -109,9 +127,9 @@ export function EditorScreen({
           {previewVisible ? (
             <div className="marp-preview-container">
               {isLesson ? (
-                <MarpPreview workspacePath={workspacePath} content={editorContent} />
+                <MarpPreview workspacePath={workspacePath} content={previewContent} />
               ) : (
-                <ActivityPreview workspacePath={workspacePath} content={editorContent} />
+                <ActivityPreview workspacePath={workspacePath} content={previewContent} />
               )}
             </div>
           ) : null}
