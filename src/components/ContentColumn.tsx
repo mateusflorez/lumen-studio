@@ -42,6 +42,7 @@ export function ContentColumn({
   onPreview: (item: ContentItem) => void;
 }) {
   const [openMenuPath, setOpenMenuPath] = useState<string | null>(null);
+  const [menuOpensUpward, setMenuOpensUpward] = useState(false);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -129,17 +130,22 @@ export function ContentColumn({
                     <button
                       type="button"
                       className={`ghost-action content-card-menu-trigger${openMenuPath === item.relativePath ? " ghost-action--active" : ""}`}
-                      onClick={() =>
-                        setOpenMenuPath((current) =>
-                          current === item.relativePath ? null : item.relativePath,
-                        )
-                      }
+                      onClick={(e) => {
+                        if (openMenuPath === item.relativePath) {
+                          setOpenMenuPath(null);
+                        } else {
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const spaceBelow = window.innerHeight - rect.bottom;
+                          setMenuOpensUpward(spaceBelow < 220);
+                          setOpenMenuPath(item.relativePath);
+                        }
+                      }}
                       disabled={generationBusy}
                     >
                       Mais
                     </button>
                     {openMenuPath === item.relativePath ? (
-                      <div className="content-card-menu-popover">
+                      <div className={`content-card-menu-popover${menuOpensUpward ? " opens-upward" : ""}`}>
                         <button
                           type="button"
                           className="content-card-menu-item"
