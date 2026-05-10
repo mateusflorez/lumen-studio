@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumen Studio — Crie materiais didáticos com agilidade</title>
+    <meta
+      name="description"
+      content="Lumen Studio ajuda professores a criar apresentações e atividades com agilidade, sem depender de internet ou assinaturas."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200;12..96,400;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="topbar" aria-label="Navegação principal">
+        <img src="assets/lumen_studio_lockup.svg" alt="Lumen Studio" class="brand" />
+        <a class="nav-link" href="https://github.com/mateusflorez/lumen-studio/releases/latest">Releases</a>
+      </nav>
+
+      <div class="hero-content">
+        <p class="eyebrow">Para professores que valorizam o tempo</p>
+        <h1>Lumen<br />Studio</h1>
+        <p class="lead">
+          Escreva o conteúdo das suas aulas, gere apresentações e atividades com um clique — tudo salvo no seu
+          computador, sem depender de internet.
+        </p>
+        <div class="actions">
+          <a
+            id="download-link"
+            class="button primary"
+            href="https://github.com/mateusflorez/lumen-studio/releases/latest"
+          >
+            Baixar para Windows
+          </a>
+          <a class="button secondary" href="#interface">Ver interface</a>
+        </div>
+        <p id="release-info" class="release-info">Buscando versão mais recente…</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="section intro reveal">
+        <div>
+          <p class="section-label">Sua sala de aula, no seu controle</p>
+          <h2>Material didático sem complicação</h2>
+        </div>
+        <p>
+          Cada disciplina fica organizada em pastas no seu computador. Sem planos de assinatura, sem perder o acesso,
+          sem depender de uma conexão com a internet. Compatível com OneDrive, Google Drive e qualquer rotina de backup.
+        </p>
+      </section>
+
+      <section class="feature-grid" aria-label="O que o Lumen Studio faz">
+        <article class="reveal" style="--delay: 0ms">
+          <span>01</span>
+          <h3>Escreva sem distração</h3>
+          <p>
+            Um editor limpo onde você redige o conteúdo da aula. O Lumen Studio cuida da estrutura — você foca no que
+            ensina.
+          </p>
+        </article>
+        <article class="reveal" style="--delay: 120ms">
+          <span>02</span>
+          <h3>Gere com um clique</h3>
+          <p>
+            Suas aulas viram apresentações prontas para o PowerPoint. Suas atividades viram PDFs direto para a
+            impressora.
+          </p>
+        </article>
+        <article class="reveal" style="--delay: 240ms">
+          <span>03</span>
+          <h3>Tudo à vista</h3>
+          <p>
+            O app avisa quando um material ainda não foi gerado ou quando o conteúdo foi atualizado e precisa ser
+            regenerado.
+          </p>
+        </article>
+      </section>
+
+      <section class="how-it-works reveal">
+        <header class="how-header">
+          <p class="section-label">Como funciona</p>
+          <h2>Do rascunho ao material pronto em três passos</h2>
+        </header>
+        <ol class="steps">
+          <li class="step">
+            <div class="step-number" aria-hidden="true">1</div>
+            <div class="step-body">
+              <h4>Escreva o conteúdo</h4>
+              <p>
+                Use o editor integrado para redigir suas aulas e atividades. O app organiza automaticamente por
+                disciplina.
+              </p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-number" aria-hidden="true">2</div>
+            <div class="step-body">
+              <h4>Clique em Gerar</h4>
+              <p>O Lumen Studio transforma o texto em uma apresentação ou atividade formatada — em segundos.</p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-number" aria-hidden="true">3</div>
+            <div class="step-body">
+              <h4>Compartilhe ou imprima</h4>
+              <p>
+                Os arquivos ficam salvos no seu computador. Abra no PowerPoint, imprima o PDF ou compartilhe como
+                quiser.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section id="interface" class="section gallery-heading reveal">
+        <div>
+          <p class="section-label">Interface</p>
+          <h2>Feito para escrever, revisar e gerar</h2>
+        </div>
+      </section>
+
+      <section class="gallery" aria-label="Telas do Lumen Studio">
+        <figure class="reveal" style="--delay: 0ms">
+          <div class="fig-inner">
+            <img src="assets/screens/main_menu.png" alt="Painel principal com todas as disciplinas" loading="lazy" />
+            <div class="fig-zoom" aria-hidden="true"></div>
+          </div>
+          <figcaption>Suas disciplinas em um painel</figcaption>
+        </figure>
+        <figure class="reveal" style="--delay: 100ms">
+          <div class="fig-inner">
+            <img src="assets/screens/disciplina.png" alt="Aulas e atividades organizadas por disciplina" loading="lazy" />
+            <div class="fig-zoom" aria-hidden="true"></div>
+          </div>
+          <figcaption>Aulas e atividades por disciplina</figcaption>
+        </figure>
+        <figure class="reveal" style="--delay: 200ms">
+          <div class="fig-inner">
+            <img src="assets/screens/editor_aula.png" alt="Editor de aula" loading="lazy" />
+            <div class="fig-zoom" aria-hidden="true"></div>
+          </div>
+          <figcaption>Editor de aula</figcaption>
+        </figure>
+        <figure class="reveal" style="--delay: 300ms">
+          <div class="fig-inner">
+            <img src="assets/screens/editor_atividade.png" alt="Editor de atividade" loading="lazy" />
+            <div class="fig-zoom" aria-hidden="true"></div>
+          </div>
+          <figcaption>Editor de atividade</figcaption>
+        </figure>
+      </section>
+    </main>
+
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Imagem ampliada">
+      <div class="lightbox-inner">
+        <button class="lightbox-close" id="lightbox-close" aria-label="Fechar">✕</button>
+        <img id="lightbox-img" src="" alt="" />
+        <p class="lightbox-caption" id="lightbox-caption"></p>
+      </div>
+    </div>
+
+    <footer>
+      <span>Lumen Studio</span>
+      <a href="https://github.com/mateusflorez/lumen-studio">Código-fonte</a>
+    </footer>
+
+    <script src="app.js"></script>
+    <script>
+      // Lightbox
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImg = document.getElementById("lightbox-img");
+      const lightboxCaption = document.getElementById("lightbox-caption");
+      const lightboxClose = document.getElementById("lightbox-close");
+
+      function openLightbox(src, alt, caption) {
+        lightboxImg.src = src;
+        lightboxImg.alt = alt;
+        lightboxCaption.textContent = caption;
+        lightbox.classList.add("open");
+        document.body.style.overflow = "hidden";
+        lightboxClose.focus();
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+
+      document.querySelectorAll(".gallery figure").forEach((fig) => {
+        const img = fig.querySelector("img");
+        const caption = fig.querySelector("figcaption");
+        fig.addEventListener("click", () => openLightbox(img.src, img.alt, caption.textContent));
+      });
+
+      lightboxClose.addEventListener("click", closeLightbox);
+      lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
+    </script>
+    <script>
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const delay = parseInt(entry.target.style.getPropertyValue("--delay") || "0");
+            setTimeout(() => entry.target.classList.add("visible"), delay);
+            observer.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.1 }
+      );
+      document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+    </script>
+  </body>
+</html>
