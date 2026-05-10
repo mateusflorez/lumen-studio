@@ -1,19 +1,19 @@
 {
-  "version": "1.2.4",
+  "version": "1.2.5",
   "notes": "## O que mudou\n\nVeja o histórico de commits para detalhes desta versão.\n\n## Instalação\n\nBaixe o arquivo `_x64-setup.exe` abaixo e execute o instalador.",
-  "pub_date": "2026-04-29T16:54:17.823Z",
+  "pub_date": "2026-05-10T17:32:09.272Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTa0RsTWluRjN2YmhlaHhuTzY3ZHZEcXQzS3ZNditubWYxY1FhTmo5THVlRk41clpFVnY5S0p5dlk5QnI5VUZoNkdiMjUxZlRzNW5CdVRGWkl4TSs1cnB3QmV0Vkk3QXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NDgxNjQwCWZpbGU6THVtZW4gU3R1ZGlvXzEuMi40X3g2NF9lbi1VUy5tc2kKNzR3dk9mazJqMzYxcTNCNU43bzdGMFcrYndRQ2F1Tm9HczlJR2M0L0w3cW1kZWlHNms3aTFGYUE3RVVkQlpENWNvT3l5NGhWQnhta3Z6aUZLRUlyQ3c9PQo=",
-      "url": "https://github.com/mateusflorez/lumen-studio/releases/download/v1.2.4/Lumen.Studio_1.2.4_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTa0RsTWluRjN2Ym81L2orYmM4UFAwaUgrd2FJVS85cHFqMmdCaHlnbUdNUVFSZThHZmRNaEh0UE8wSXJzSUhpVFhKdmdjSFRWaEovamFPOGRhSVRWY3oyMlZwOGJiWVFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NDM0MzE3CWZpbGU6THVtZW4gU3R1ZGlvXzEuMi41X3g2NF9lbi1VUy5tc2kKZ2hTZjRldUpJMFdYT0xMMkl6NzQ5bXgvVVg4QW1CUW9kN0dVY1ViYVRCVUFLa1BBbDhVaUk5M3RqS3JPMUtZSFJ0UEJHdVFPM2JreDgrOWlYTXp3Q2c9PQo=",
+      "url": "https://github.com/mateusflorez/lumen-studio/releases/download/v1.2.5/Lumen.Studio_1.2.5_x64_en-US.msi"
     },
     "windows-x86_64-msi": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTa0RsTWluRjN2YmhlaHhuTzY3ZHZEcXQzS3ZNditubWYxY1FhTmo5THVlRk41clpFVnY5S0p5dlk5QnI5VUZoNkdiMjUxZlRzNW5CdVRGWkl4TSs1cnB3QmV0Vkk3QXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NDgxNjQwCWZpbGU6THVtZW4gU3R1ZGlvXzEuMi40X3g2NF9lbi1VUy5tc2kKNzR3dk9mazJqMzYxcTNCNU43bzdGMFcrYndRQ2F1Tm9HczlJR2M0L0w3cW1kZWlHNms3aTFGYUE3RVVkQlpENWNvT3l5NGhWQnhta3Z6aUZLRUlyQ3c9PQo=",
-      "url": "https://github.com/mateusflorez/lumen-studio/releases/download/v1.2.4/Lumen.Studio_1.2.4_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTa0RsTWluRjN2Ym81L2orYmM4UFAwaUgrd2FJVS85cHFqMmdCaHlnbUdNUVFSZThHZmRNaEh0UE8wSXJzSUhpVFhKdmdjSFRWaEovamFPOGRhSVRWY3oyMlZwOGJiWVFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NDM0MzE3CWZpbGU6THVtZW4gU3R1ZGlvXzEuMi41X3g2NF9lbi1VUy5tc2kKZ2hTZjRldUpJMFdYT0xMMkl6NzQ5bXgvVVg4QW1CUW9kN0dVY1ViYVRCVUFLa1BBbDhVaUk5M3RqS3JPMUtZSFJ0UEJHdVFPM2JreDgrOWlYTXp3Q2c9PQo=",
+      "url": "https://github.com/mateusflorez/lumen-studio/releases/download/v1.2.5/Lumen.Studio_1.2.5_x64_en-US.msi"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTa0RsTWluRjN2YnRzWU4weU9OeHhWTldGazdmVndTbjJXN3JSY2hFRXBhUyt4L3MrenV5OVNjczFXV1lZTzhhNkp3V0p0V1BrVlhsbUM0M2hkV0UxVVBZZ2RJYVJROXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3NDgxNjQwCWZpbGU6THVtZW4gU3R1ZGlvXzEuMi40X3g2NC1zZXR1cC5leGUKSVBDRXpPSXN6VTQyOTJqZG8xUTBsdDJpYm5KNmxGTkwxcHdIdFErWWlRQllzUmNtY0tKYzVvbkRSbmcrL016a1R6bjNlVVBwb3Q4QnJyeG1aelVMRFE9PQo=",
-      "url": "https://github.com/mateusflorez/lumen-studio/releases/download/v1.2.4/Lumen.Studio_1.2.4_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTa0RsTWluRjN2YmpBdWM4KzI2NTc2YzBKTzc4Y1Yrd3lDSUVQc0ZUUnRkWm5scnZWWklBNGgxb0FNUTVDZmk4OXdoRTJZMjFwOXpSVnFHaHQ4SkloYkZEaEYvMmxvSWdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NDM0MzE3CWZpbGU6THVtZW4gU3R1ZGlvXzEuMi41X3g2NC1zZXR1cC5leGUKLzZ3WTJoYy9vcFUzZktrM1F0UGxJWEhJWk1kOGhxSVpkVkFEUTFCUHJoVVR5YldlMXBkYUhaaFVqaDl3ZWsyNE9zYUtHSHRVSjBlQS9mSVZvL3FZQmc9PQo=",
+      "url": "https://github.com/mateusflorez/lumen-studio/releases/download/v1.2.5/Lumen.Studio_1.2.5_x64-setup.exe"
     }
   }
 }
