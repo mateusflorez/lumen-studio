@@ -18,6 +18,7 @@ export function FormattingToolbar({
   contentRelativePath: string;
 }) {
   const [imageBusy, setImageBusy] = useState(false);
+  const isActivity = contentRelativePath.startsWith("atividades/");
 
   function view(): EditorView | null {
     return editorHandle.current?.view ?? null;
@@ -77,6 +78,14 @@ export function FormattingToolbar({
     if (!v) return;
     const line = v.state.doc.lineAt(v.state.selection.main.head);
     v.dispatch({ changes: { from: line.to, insert: "\n\n---\n" } });
+    v.focus();
+  }
+
+  function insertBlock(snippet: string) {
+    const v = view();
+    if (!v) return;
+    const line = v.state.doc.lineAt(v.state.selection.main.head);
+    v.dispatch({ changes: { from: line.to, insert: `\n\n${snippet}\n` } });
     v.focus();
   }
 
@@ -157,9 +166,38 @@ export function FormattingToolbar({
         <button type="button" className="toolbar-btn" onClick={insertTable} title="Inserir tabela">
           Tabela
         </button>
-        <button type="button" className="toolbar-btn" onClick={insertSlideSep} title="Separador de slide Marp">
-          — Slide
-        </button>
+        {isActivity ? (
+          <>
+            <button
+              type="button"
+              className="toolbar-btn"
+              onClick={() => insertBlock('<div class="tip">\nDica: escreva uma orientação curta para a turma.\n</div>')}
+              title="Inserir bloco de dica"
+            >
+              Dica
+            </button>
+            <button
+              type="button"
+              className="toolbar-btn"
+              onClick={() => insertBlock('<span class="answer-line"></span>')}
+              title="Inserir linha de resposta"
+            >
+              Resposta
+            </button>
+            <button
+              type="button"
+              className="toolbar-btn"
+              onClick={() => insertBlock('<span class="fill-box"></span>')}
+              title="Inserir caixa de preenchimento"
+            >
+              Caixa
+            </button>
+          </>
+        ) : (
+          <button type="button" className="toolbar-btn" onClick={insertSlideSep} title="Separador de slide Marp">
+            — Slide
+          </button>
+        )}
       </div>
 
       <div className="formatting-toolbar-sep" />
