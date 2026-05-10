@@ -152,7 +152,7 @@
 
 .studio-stage {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   padding: 2rem;
 }
 
@@ -1116,7 +1116,7 @@
 
 .formatting-toolbar {
   position: sticky;
-  top: 0;
+  top: 1rem;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -1223,6 +1223,8 @@
 }
 
 .marp-preview-container {
+  position: sticky;
+  top: 1rem;
   flex: 0 0 46%;
   min-width: 0;
 }
