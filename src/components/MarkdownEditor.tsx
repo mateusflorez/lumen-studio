@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { EditorState, RangeSetBuilder, StateField, Text } from "@codemirror/state";
 import {
@@ -23,6 +23,7 @@ const editorTheme = EditorView.theme({
   ".cm-scroller": {
     fontFamily: "var(--font-ui)",
     lineHeight: "1.6",
+    overflowX: "hidden",
   },
   ".cm-gutters": {
     borderRight: "1px solid rgba(255, 255, 255, 0.06)",
@@ -39,6 +40,7 @@ const editorTheme = EditorView.theme({
   },
   ".cm-line": {
     padding: "0 0.1rem",
+    overflowWrap: "anywhere",
   },
   ".cm-activeLine": {
     backgroundColor: "rgba(255, 255, 255, 0.03)",
@@ -88,13 +90,12 @@ const protectTechnicalBlocks = EditorState.transactionFilter.of((transaction) =>
   return blocked ? [] : transaction;
 });
 
-export function MarkdownEditor({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (nextValue: string) => void;
-}) {
+export type EditorHandle = { view: EditorView };
+
+export const MarkdownEditor = forwardRef<
+  EditorHandle,
+  { value: string; onChange: (nextValue: string) => void }
+>(function MarkdownEditor({ value, onChange }, ref) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -102,6 +103,10 @@ export function MarkdownEditor({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useImperativeHandle(ref, () => ({
+    get view() { return viewRef.current!; },
+  }), []);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) {
@@ -115,6 +120,7 @@ export function MarkdownEditor({
         history(),
         drawSelection(),
         highlightActiveLine(),
+        EditorView.lineWrapping,
         markdown(),
         technicalBlocksField,
         protectTechnicalBlocks,
@@ -155,7 +161,7 @@ export function MarkdownEditor({
   }, [value]);
 
   return <div ref={hostRef} className="markdown-editor" />;
-}
+});
 
 function buildTechnicalDecorations(doc: Text) {
   const builder = new RangeSetBuilder<Decoration>();
@@ -258,10 +264,9 @@ function lineEnd(doc: Text, lineNumber: number) {
 function isTechnicalAssetLine(trimmed: string) {
   return (
     trimmed.startsWith("![") &&
-    (trimmed.includes("lumen_logo") ||
+    (trimmed.includes("../shared/") ||
       trimmed.includes("/assets/logo") ||
-      trimmed.includes("\\assets\\logo") ||
-      trimmed.includes("../shared/"))
+      trimmed.includes("\\assets\\logo"))
   );
 }
 

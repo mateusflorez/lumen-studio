@@ -4,9 +4,11 @@ import { invoke } from "@tauri-apps/api/core";
 export function MarpPreview({
   workspacePath,
   content,
+  contentAbsolutePath,
 }: {
   workspacePath: string;
   content: string;
+  contentAbsolutePath: string;
 }) {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,7 @@ export function MarpPreview({
         const result = await invoke<string>("render_marp_html", {
           workspacePath,
           content,
+          contentAbsolutePath,
         });
         if (cancelled) return;
         setHtml(result);
@@ -38,7 +41,7 @@ export function MarpPreview({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [content, workspacePath]);
+  }, [content, workspacePath, contentAbsolutePath]);
 
   return (
     <div className="marp-preview">

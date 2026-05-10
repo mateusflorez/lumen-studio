@@ -17,6 +17,7 @@ export function PreviewModal({
   onClose: () => void;
 }) {
   const [content, setContent] = useState<string | null>(null);
+  const [absolutePath, setAbsolutePath] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +34,7 @@ export function PreviewModal({
       .then((doc) => {
         if (!cancelled) {
           setContent(doc.content);
+          setAbsolutePath(doc.absolutePath);
           setError(null);
         }
       })
@@ -70,9 +72,9 @@ export function PreviewModal({
             <ErrorState message={error} />
           ) : content !== null ? (
             isLesson ? (
-              <MarpPreview workspacePath={workspacePath} content={content} />
+              <MarpPreview workspacePath={workspacePath} content={content} contentAbsolutePath={absolutePath} />
             ) : (
-              <ActivityPreview workspacePath={workspacePath} content={content} />
+              <ActivityPreview workspacePath={workspacePath} content={content} contentAbsolutePath={absolutePath} />
             )
           ) : null}
         </div>
