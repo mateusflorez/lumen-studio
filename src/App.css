@@ -1703,7 +1703,7 @@
     height: auto;
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 20;
   }
 
   .sidebar-icons {
@@ -1713,6 +1713,11 @@
   .hero-copy h1 {
     max-width: 12ch;
     font-size: clamp(2.8rem, 14vw, 4.8rem);
+  }
+
+  .formatting-toolbar,
+  .marp-preview-container {
+    top: 5.75rem;
   }
 }
 
