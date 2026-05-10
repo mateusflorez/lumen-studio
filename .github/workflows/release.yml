@@ -129,6 +129,8 @@ jobs:
           cp source/site/styles.css pages/styles.css
           cp source/site/app.js pages/app.js
           cp source/lumen_studio_lockup.svg pages/assets/lumen_studio_lockup.svg
+          cp source/src-tauri/icons/icon.ico pages/favicon.ico
+          cp source/src-tauri/icons/64x64.png pages/favicon.png
           cp source/src-tauri/icons/64x64.png pages/assets/favicon.png
           cp source/docs/main_menu.png pages/assets/screens/main_menu.png
           cp source/docs/disciplina.png pages/assets/screens/disciplina.png
@@ -173,7 +175,7 @@ jobs:
           cd pages
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html styles.css app.js latest.json .nojekyll assets/
+          git add index.html styles.css app.js latest.json favicon.ico favicon.png .nojekyll assets/
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "chore: publish site and latest.json → ${{ github.event.inputs.tag || github.ref_name }}"
           git push
