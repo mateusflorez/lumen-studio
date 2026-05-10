@@ -129,6 +129,7 @@ jobs:
           cp source/site/styles.css pages/styles.css
           cp source/site/app.js pages/app.js
           cp source/lumen_studio_lockup.svg pages/assets/lumen_studio_lockup.svg
+          cp source/src-tauri/icons/64x64.png pages/assets/favicon.png
           cp source/docs/main_menu.png pages/assets/screens/main_menu.png
           cp source/docs/disciplina.png pages/assets/screens/disciplina.png
           cp source/docs/editor_aula.png pages/assets/screens/editor_aula.png
