@@ -23,6 +23,7 @@ const editorTheme = EditorView.theme({
   ".cm-scroller": {
     fontFamily: "var(--font-ui)",
     lineHeight: "1.6",
+    overflowX: "hidden",
   },
   ".cm-gutters": {
     borderRight: "1px solid rgba(255, 255, 255, 0.06)",
@@ -39,6 +40,7 @@ const editorTheme = EditorView.theme({
   },
   ".cm-line": {
     padding: "0 0.1rem",
+    overflowWrap: "anywhere",
   },
   ".cm-activeLine": {
     backgroundColor: "rgba(255, 255, 255, 0.03)",
@@ -118,6 +120,7 @@ export const MarkdownEditor = forwardRef<
         history(),
         drawSelection(),
         highlightActiveLine(),
+        EditorView.lineWrapping,
         markdown(),
         technicalBlocksField,
         protectTechnicalBlocks,

@@ -1112,6 +1112,29 @@
 
 .editor-surface {
   margin-top: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.markdown-editor,
+.markdown-editor .cm-editor,
+.markdown-editor .cm-scroller {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.markdown-editor .cm-editor {
+  width: 100%;
+}
+
+.markdown-editor .cm-scroller {
+  overflow-x: hidden !important;
+}
+
+.markdown-editor .cm-content {
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .formatting-toolbar {
@@ -1718,6 +1741,16 @@
   .formatting-toolbar,
   .marp-preview-container {
     top: 5.75rem;
+  }
+
+  .editor-body--split {
+    flex-direction: column;
+  }
+
+  .editor-body--split > .editor-panel,
+  .marp-preview-container {
+    width: 100%;
+    flex-basis: auto;
   }
 }
 
