@@ -16,6 +16,12 @@
   --accent-wash: rgba(255, 185, 56, 0.12);
   --accent-ring: rgba(255, 185, 56, 0.18);
   --shadow-elevated: rgba(0, 0, 0, 0.28);
+  --shadow-deep: rgba(0, 0, 0, 0.48);
+  --hero-line: rgba(240, 237, 230, 0.045);
+  --scrim: rgba(14, 17, 23, 0.72);
+  --motion-fast: 0.5s;
+  --motion-base: 0.72s;
+  --motion-slow: 0.95s;
   --ok: #22c55e;
   --danger: #ef4444;
   font-family:
@@ -33,12 +39,22 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg-base);
+  background:
+    linear-gradient(var(--hero-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hero-line) 1px, transparent 1px),
+    var(--bg-base);
+  background-size: 72px 72px;
   color: var(--text-primary);
 }
 
 a {
   color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .hero {
@@ -49,10 +65,33 @@ a {
   grid-template-rows: auto 1fr;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 80% 60% at 70% 20%, rgba(255, 185, 56, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 10% 80%, rgba(255, 185, 56, 0.05) 0%, transparent 55%),
-    linear-gradient(160deg, #0e1117 0%, #131720 45%, #0e1117 100%);
+    linear-gradient(115deg, var(--accent-wash) 0%, transparent 34%),
+    linear-gradient(160deg, var(--bg-base) 0%, var(--bg-surface) 48%, var(--bg-base) 100%);
   border-bottom: 1px solid var(--border);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--hero-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hero-line) 1px, transparent 1px);
+  background-size: 72px 72px;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 78%);
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+  pointer-events: none;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: clamp(20px, 5vw, 72px);
+  bottom: 0;
+  width: min(420px, 40vw);
+  height: 1px;
+  background: var(--accent);
+  box-shadow: 0 0 36px var(--accent-wash);
 }
 
 .topbar,
@@ -66,6 +105,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+  padding: 10px 0;
 }
 
 .brand {
@@ -74,20 +114,33 @@ a {
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   color: var(--text-secondary);
   font-size: 0.84rem;
   text-decoration: none;
   text-transform: uppercase;
   letter-spacing: 0;
+  transition:
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease;
 }
 
 .nav-link:hover {
+  background: var(--bg-surface-soft);
+  border-color: var(--border);
   color: var(--accent);
 }
 
 .hero-content {
   align-self: end;
   max-width: 780px;
+  padding-bottom: clamp(8px, 2vw, 24px);
 }
 
 .eyebrow,
@@ -148,6 +201,8 @@ h3 {
 }
 
 .button {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -158,28 +213,47 @@ h3 {
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
+  transition:
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-base) ease,
+    color var(--motion-fast) ease,
+    transform var(--motion-base) ease;
+}
+
+.button:hover {
+  transform: translateY(-2px);
 }
 
 .button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #16110a;
+  color: var(--accent-ink);
+  box-shadow: 0 12px 30px var(--accent-wash);
 }
 
 .button.primary:hover {
   background: var(--accent-strong);
+  box-shadow: 0 18px 42px var(--accent-wash);
 }
 
 .button.secondary {
-  background: rgba(31, 37, 53, 0.72);
+  background: var(--bg-surface-soft);
   color: var(--text-primary);
 }
 
 .button.secondary:hover {
   border-color: var(--accent);
+  box-shadow: 0 12px 30px var(--shadow-elevated);
 }
 
 .release-info {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 7px 10px;
+  background: var(--bg-surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--text-secondary);
   text-transform: none;
 }
@@ -190,11 +264,22 @@ main {
 }
 
 .section {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(260px, 0.85fr);
   gap: clamp(28px, 6vw, 80px);
   align-items: end;
   padding: clamp(56px, 10vw, 112px) 0 42px;
+}
+
+.section::before {
+  content: "";
+  position: absolute;
+  top: clamp(36px, 7vw, 72px);
+  left: 0;
+  width: 72px;
+  height: 1px;
+  background: var(--accent);
 }
 
 .section > p {
@@ -219,10 +304,10 @@ main {
   border: 1px solid var(--border);
   border-radius: 8px;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease,
-    background 0.25s ease;
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) ease,
+    background var(--motion-base) ease;
 }
 
 .feature-grid article::before {
@@ -232,7 +317,7 @@ main {
   background: linear-gradient(135deg, var(--accent-wash), transparent 52%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--motion-base) ease;
 }
 
 .feature-grid article::after {
@@ -245,8 +330,8 @@ main {
   border: 1px solid var(--accent-ring);
   border-radius: 50%;
   transition:
-    border-color 0.25s ease,
-    transform 0.25s ease;
+    border-color var(--motion-base) ease,
+    transform var(--motion-base) ease;
 }
 
 .feature-grid article:hover {
@@ -282,8 +367,8 @@ main {
   font-size: 0.84rem;
   font-weight: 600;
   transition:
-    box-shadow 0.25s ease,
-    transform 0.25s ease;
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) ease;
 }
 
 .feature-grid article:hover span {
@@ -330,10 +415,10 @@ main {
   border: 1px solid var(--border);
   border-radius: 8px;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease,
-    background 0.25s ease;
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) ease,
+    background var(--motion-base) ease;
 }
 
 .step::before {
@@ -343,7 +428,7 @@ main {
   background: linear-gradient(135deg, var(--accent-wash), transparent 52%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--motion-base) ease;
 }
 
 .step::after {
@@ -356,8 +441,8 @@ main {
   border: 1px solid var(--accent-ring);
   border-radius: 50%;
   transition:
-    border-color 0.25s ease,
-    transform 0.25s ease;
+    border-color var(--motion-base) ease,
+    transform var(--motion-base) ease;
 }
 
 .step:hover {
@@ -390,8 +475,8 @@ main {
   font-size: 0.86rem;
   font-weight: 600;
   transition:
-    box-shadow 0.25s ease,
-    transform 0.25s ease;
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) ease;
 }
 
 .step:hover .step-number {
@@ -420,30 +505,37 @@ main {
 }
 
 .gallery-heading {
-  padding-bottom: 24px;
+  padding-top: clamp(76px, 11vw, 132px);
+  padding-bottom: 28px;
 }
 
 .gallery {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  padding-bottom: 88px;
+  padding-bottom: clamp(88px, 12vw, 132px);
 }
 
 figure {
+  position: relative;
   margin: 0;
-  background: var(--bg-surface);
+  background: linear-gradient(180deg, var(--bg-surface), var(--bg-surface-soft));
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   cursor: zoom-in;
-  transition: border-color 0.2s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-base) ease,
+    transform var(--motion-base) ease,
+    background var(--motion-base) ease;
 }
 
 figure:hover {
   border-color: var(--accent);
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 12px 40px rgba(255, 185, 56, 0.12);
+  background: linear-gradient(180deg, var(--bg-overlay), var(--bg-surface-soft));
+  transform: translateY(-6px);
+  box-shadow: 0 18px 44px var(--shadow-elevated), 0 0 0 1px var(--accent-wash);
 }
 
 figure:hover .fig-zoom {
@@ -452,6 +544,8 @@ figure:hover .fig-zoom {
 
 .fig-inner {
   position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-base);
 }
 
 .fig-zoom {
@@ -460,17 +554,17 @@ figure:hover .fig-zoom {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 17, 23, 0.45);
+  background: var(--scrim);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--motion-fast) ease;
 }
 
 .fig-zoom::after {
   content: "⤢";
   font-size: 1.6rem;
-  color: var(--accent);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 50%;
   width: 48px;
   height: 48px;
@@ -487,13 +581,22 @@ figure img {
   aspect-ratio: 16 / 10;
   object-fit: cover;
   object-position: top center;
+  transition:
+    filter var(--motion-base) ease,
+    transform var(--motion-slow) ease;
+}
+
+figure:hover img {
+  filter: saturate(1.08) contrast(1.04);
+  transform: scale(1.025);
 }
 
 figcaption {
-  padding: 12px 14px 14px;
+  min-height: 50px;
+  padding: 14px 16px 16px;
   color: var(--text-secondary);
   font-size: 0.84rem;
-  transition: color 0.2s ease;
+  transition: color var(--motion-fast) ease;
 }
 
 figure:hover figcaption {
@@ -509,11 +612,11 @@ figure:hover figcaption {
   align-items: center;
   justify-content: center;
   padding: clamp(16px, 4vw, 48px);
-  background: rgba(10, 13, 19, 0.92);
+  background: color-mix(in srgb, var(--bg-base) 92%, black);
   backdrop-filter: blur(8px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--motion-base) ease;
 }
 
 .lightbox.open {
@@ -526,7 +629,7 @@ figure:hover figcaption {
   max-width: min(1100px, 100%);
   width: 100%;
   transform: translateY(16px) scale(0.97);
-  transition: transform 0.28s ease;
+  transition: transform var(--motion-base) ease;
 }
 
 .lightbox.open .lightbox-inner {
@@ -538,7 +641,7 @@ figure:hover figcaption {
   width: 100%;
   border-radius: 10px;
   border: 1px solid var(--border-strong);
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 32px 80px var(--shadow-deep);
 }
 
 .lightbox-caption {
@@ -564,27 +667,51 @@ figure:hover figcaption {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
 }
 
 .lightbox-close:hover {
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-ink);
+  transform: scale(1.06);
 }
 
 footer {
+  position: relative;
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  padding: 28px clamp(20px, 5vw, 72px);
+  padding: 34px clamp(20px, 5vw, 72px);
   border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--bg-base), var(--bg-surface));
   color: var(--text-dim);
   font-size: 0.84rem;
+}
+
+footer::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: clamp(20px, 5vw, 72px);
+  width: 96px;
+  height: 1px;
+  background: var(--accent);
+}
+
+footer span {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 footer a {
   color: var(--text-secondary);
   text-decoration: none;
+  transition: color var(--motion-fast) ease;
 }
 
 footer a:hover {
@@ -597,11 +724,23 @@ footer a:hover {
     padding-bottom: 52px;
   }
 
+  .hero::after {
+    width: calc(100% - 40px);
+  }
+
+  h1 {
+    font-size: clamp(4rem, 22vw, 6.5rem);
+  }
+
   .section,
   .feature-grid,
   .steps,
   .gallery {
     grid-template-columns: 1fr;
+  }
+
+  .section {
+    align-items: start;
   }
 
   .feature-grid article,
@@ -615,5 +754,53 @@ footer a:hover {
 
   footer {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 520px) {
+  main {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .brand {
+    width: min(196px, 58vw);
+  }
+
+  .actions,
+  .button {
+    width: 100%;
+  }
+
+  .release-info {
+    border-radius: 8px;
+  }
+
+  .feature-grid article,
+  .step {
+    padding: 20px;
+  }
+
+  .lightbox-close {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
