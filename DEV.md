@@ -16,20 +16,28 @@ npx tsc --noEmit      # type-check
 O workflow de CI **não roda em push para `main`** — só dispara ao publicar uma tag `v*.*.*`.
 
 ```bash
-# 1. Atualizar a versão nos dois arquivos:
+# 1. Atualizar a versão nos arquivos:
 #    src-tauri/tauri.conf.json  → "version": "X.Y.Z"
 #    src-tauri/Cargo.toml       → version = "X.Y.Z"
+#    package.json               → "version": "X.Y.Z"  # recomendado manter alinhado
 
 # 2. Commitar o bump
-git add src-tauri/tauri.conf.json src-tauri/Cargo.toml
+git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
 git commit -m "chore: bump version to X.Y.Z"
 
 # 3. Criar e publicar a tag — dispara o GitHub Actions
 git tag vX.Y.Z
-git push origin main --tags
+git push origin main
+git push origin vX.Y.Z
 ```
 
 O Actions compila o instalador, assina, publica no GitHub Releases e atualiza o manifesto de atualização automática.
+
+Para republicar apenas o manifesto `latest.json` de uma release que já existe, use a execução manual do workflow:
+
+```bash
+gh workflow run release.yml -f tag=vX.Y.Z
+```
 
 #### Secrets necessários no GitHub
 

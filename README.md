@@ -20,6 +20,16 @@
 
 O fluxo é simples: escreva em Markdown, gere o arquivo, compartilhe. Cada disciplina vive como uma pasta no sistema de arquivos. Nada é perdido se o app for desinstalado.
 
+## Interface
+
+![Tela inicial do Lumen Studio](docs/main_menu.png)
+
+![Tela de disciplina com aulas e atividades](docs/disciplina.png)
+
+![Editor de aula](docs/editor_aula.png)
+
+![Editor de atividade](docs/editor_atividade.png)
+
 ## Capacidades principais
 
 **Edição focada** — Editor CodeMirror 6 com ocultação automática de blocos técnicos (frontmatter YAML, CSS de tema, comentários de apresentador). Você vê apenas o que importa.
